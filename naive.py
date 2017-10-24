@@ -9,7 +9,7 @@ def Lap(scale):
 
 def report_noisy_max(database, queries, epsilon):
     responses = [q(database) + Lap(1/epsilon) for q in queries]
-    return queries[responses.index(max(responses))].__name__
+    return responses.index(max(responses))
 
 
 def above_threshold(database, queries, threshold, e1, e2, sensitivity=1):
