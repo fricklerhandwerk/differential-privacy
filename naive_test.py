@@ -18,11 +18,11 @@ def q_b(x):
     return sum(v['b'] for v in x.values())
 
 
-database = create_database(0.5, 0.50, 100)
+database = create_database(0.2, 0.5, 100)
 
 result = []
 for i in range(100):
     result.append(report_noisy_max(database, [q_a, q_b], epsilon=0.05))
 
-print(result.count('q_a'), q_a(database))
-print(result.count('q_b'), q_b(database))
+print("#max:", result.count('q_a'), "value:", q_a(database))
+print("#max:", result.count('q_b'), "value:", q_b(database))
