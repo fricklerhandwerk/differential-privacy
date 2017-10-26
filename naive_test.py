@@ -5,8 +5,9 @@ from random import shuffle
 
 from naive import above_threshold
 from naive import report_noisy_max
+from naive import sparse
 
-N = 100  # database size
+N = 1000  # database size
 K = 100  # number of trials
 
 
@@ -36,13 +37,22 @@ ranks_database = create_ranks(N)
 ranks_queries = [partial(query, i) for i in range(N)]
 
 
-print("Average length of response vector depending on threshold")
-for m in range(K//4):
-    shuffle(ranks_queries)
-    T = N/(m+1)
-    def result():
-        result = above_threshold(ranks_database, ranks_queries, T, e1=0.1, e2=0.1)
-        assert not any(result[:-1])
-        return result
-    print("T:", "{:.2f}".format(T), "len:", sum(len(result()) for _ in range(K))/K)
+# print("Average length of response vector depending on threshold")
+# for m in range(20):
+#     T = N/(m+1)
+#     def result():
+#         shuffle(ranks_queries)
+#         result = above_threshold(ranks_database, ranks_queries, T, e1=0.1, e2=0.1)
+#         assert not any(result[:-1])
+#         return result
+#     print("T:", "{:.2f}".format(T), "len:", sum(len(result()) for _ in range(K))/K)
 
+
+print("Average length of response vector for c above-threshold query results")
+for c in range(1,50):
+    ranks_queries = [partial(query, i) for i in range(N)]
+    T = (ranks_database[c] + ranks_database[c+1])/2
+    def result():
+        shuffle(ranks_queries)
+        return sparse(ranks_database, ranks_queries, T, c, e1=0.1, e2=0.1)
+    print("c:", c, "len:", sum(len(result()) for _ in range(K))/K)
