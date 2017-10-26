@@ -37,10 +37,12 @@ ranks_queries = [partial(query, i) for i in range(N)]
 
 
 print("Average length of response vector depending on threshold")
-for m in range(K//2):
+for m in range(K//4):
     shuffle(ranks_queries)
     T = N/(m+1)
-    result above_threshold(ranks_database, ranks_queries, T, e1=0.1, e2=0.1)
-    assert not any(result[:-1])
-    assert result[-1] is True
-    print("T:", "{:.2f}".format(T), "len:", sum(len(result) for _ in range(K))/K)
+    def result():
+        result = above_threshold(ranks_database, ranks_queries, T, e1=0.1, e2=0.1)
+        assert not any(result[:-1])
+        return result
+    print("T:", "{:.2f}".format(T), "len:", sum(len(result()) for _ in range(K))/K)
+
