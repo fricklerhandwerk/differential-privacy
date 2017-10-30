@@ -31,7 +31,21 @@ def plot(states, preargs=(), interval=None,
     if block:
         input("Press [enter] to continue.")
 
-a_larger_b = Predicate(lambda x, y: 1 if x >= y else 0, [R_plus, R_plus])
+
+def a_larger_b(alpha=0):
+    return Predicate(lambda x, y: 1 if x - alpha >= y else 0, [R_plus, R_plus])
+
 
 def report_noisy_max(database, queries, epsilon):
     return [Lap(1/epsilon, q(database)) for q in queries]
+
+
+def above_threshold(database, queries, threshold, e1, e2, sensitivity=1, monotonic=True):
+    result = []
+    T = Lap(sensitivity/e1, threshold)
+    for q in queries:
+        factor = 1 if monotonic else 2
+        v = Lap(factor*sensitivity/e2, q(database))
+        above = v @ T >= a_larger_b()
+        result.append(flip(above))
+    return result

@@ -21,6 +21,6 @@ result = report_noisy_max(database, queries, epsilon=0.1)
 
 plot(result, interval=R(0,120), steps=512, block=False)
 print("P('a' > 'b'):")
-print((result[0] @ result[1]) >= a_larger_b)
+print((result[0] @ result[1]) >= a_larger_b())
 input("Press [enter] to continue.")
 

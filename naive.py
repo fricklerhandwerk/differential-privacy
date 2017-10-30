@@ -12,11 +12,12 @@ def report_noisy_max(database, queries, epsilon):
     return responses.index(max(responses))
 
 
-def above_threshold(database, queries, threshold, e1, e2, sensitivity=1):
+def above_threshold(database, queries, threshold, e1, e2, sensitivity=1, monotonic=True):
     result = []
     r = Lap(sensitivity/e1)
     for q in queries:
-        v = Lap(2*sensitivity/e2)
+        factor = 1 if monotonic else 2
+        v = Lap(factor*sensitivity/e2)
         if q(database) + v >= threshold + r:
             result.append(True)
             break
