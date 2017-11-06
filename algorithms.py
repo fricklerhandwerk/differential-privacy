@@ -49,3 +49,17 @@ def above_threshold(database, queries, threshold, e1, e2, sensitivity=1, monoton
         above = v @ T >= a_larger_b()
         result.append(flip(above))
     return result
+
+
+def exponential(database, utility, epsilon, sensitivity=1, monotonic=True):
+    factor = 1 if monotonic else 2
+
+    def weight(x):
+        return exp((epsilon*utility(database[x]))/(factor*sensitivity))
+
+    normalization = sum(weight(x) for x in database.keys())
+
+    def distribution(x):
+        return weight(x)/normalization
+
+    return State.fromfun(distribution, dom=list(database.keys()))

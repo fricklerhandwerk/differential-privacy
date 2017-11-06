@@ -7,7 +7,7 @@ from algorithms import *
 
 warnings.filterwarnings('ignore')
 
-N = 100  # database size
+N = 50  # database size
 K = 100  # number of trials
 
 
@@ -24,3 +24,13 @@ print("P('a' > 'b'):")
 print((result[0] @ result[1]) >= a_larger_b())
 input("Press [enter] to continue.")
 
+
+def create_ranks(n):
+    """generate a database of size `n` according to Zipf's law"""
+    return {i: n/(i+1) for i in range(n)}
+
+ranks_database = create_ranks(N)
+
+e = exponential(ranks_database, lambda x: x, epsilon=0.1)
+
+e.plot()
