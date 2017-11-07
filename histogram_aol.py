@@ -8,14 +8,16 @@ import string
 import re
 
 separators = '[{}]'.format(string.punctuation + string.whitespace)
-data = Counter()
+queries = set()
 
 for i in range(10):
 	filename = 'data/aol/aol-{}.txt.gz'.format(str(i+1).zfill(2))
 	with gunzip(filename, 'rt') as file:
 		reader = csv.reader(file, delimiter='\t')
 		_header = next(reader)
-		data.update(item for line in reader for item in re.split(separators, line[1]))
+		queries |= set(line[1] for line in reader)
+
+data = Counter(item for query in queries for item in re.split(separators, query))
 
 with open('data/aol.json', 'w') as f:
 	json.dump(dict(data), f, indent=0)
