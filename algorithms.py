@@ -10,7 +10,7 @@ R_minus = R(-inf, 0)
 
 
 def report_noisy_max(database, queries, epsilon):
-    return [Lap(1/epsilon, q(database)) for q in queries]
+    return [Laplace(1/epsilon, q(database)) for q in queries]
 
 
 def above_threshold(database, queries, threshold, e1, e2, sensitivity=1, monotonic=True):
@@ -38,10 +38,38 @@ def exponential(database, utility, epsilon, sensitivity=1, monotonic=True):
     return State.fromfun(distribution, dom=list(database.keys()))
 
 
+class Laplace(object):
+    """Laplace distribution"""
+    def __init__(self, spread, mean=0):
+        self.spread = spread
+        self.mean = mean
+        self.state = Lap(spread, mean)
+        self.cdf = LapCDF(spread, mean)
+
+    def __call__(self, args):
+        return self.state(args)
+
+    def difference(self, other):
+        return DiffLap(self.spread, other.spread, self.mean, other.mean)
+
+    def differenceCDF(self, other):
+        return DiffLapCDF(self.spread, other.spread, self.mean, other.mean)
+
+    def larger(self, other):
+        return 1 - self.differenceCDF(other)(0)
+
 def Lap(b, m=0):
     def laplace(x):
-        return 1/(2*b)*exp(-abs(x-m)/b)
-    return State.fromfun(laplace, R_plus)
+        return exp(-abs(x-m)/b) / (2*b)
+    return State.fromfun(laplace, R)
+
+
+def LapCDF(b, m=0):
+    def laplaceCDF(x):
+        t = abs(x - m)
+        s = sgn(x-m)
+        return (-s * exp(-t/b) + s + 1) / 2
+    return State.fromfun(laplaceCDF, R)
 
 
 def DiffLap(a, b, m=0, n=0):
