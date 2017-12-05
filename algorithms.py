@@ -93,9 +93,9 @@ def DiffLapCDF(a, b, m=0, n=0):
         k = exp(-t/a)
         l = exp(-t/b)
         if a == b:
-            return -s * (2*a+t)*k / (4*a) + (1 + s)/2
+            return (-s * (2*a+t)*k / (2*a) + 1 + s)/2
         else:
-            return -s * ((a*k + b*l)/(a+b) + (a*k - b*l)/(a-b)) / 4 + (1 + s)/2
+            return (-s * ((a*k + b*l)/(a+b) + (a*k - b*l)/(a-b)) / 2 + 1 + s)/2
     return State.fromfun(differenceCDF, R)
 
 
@@ -104,7 +104,7 @@ def sgn(x):
 
 
 def plot(states, preargs=(), interval=None,
-         postargs=(), steps=256, block=True):
+         postargs=(), steps=512, block=True, title=None):
     fig, ax = plt.subplots(sharex=True, sharey=True, figsize=(10, 5))
     for s in states:
         axis = len(preargs)
@@ -117,6 +117,8 @@ def plot(states, preargs=(), interval=None,
         xs = np.linspace(interval[0], interval[1], steps, endpoint=True)
         ys = [s(*(preargs+(x,)+postargs)) for x in xs]
         ax.plot(xs, ys, color="blue", linewidth=2.0, linestyle="-")
+    if title:
+        plt.title(title)
     plt.draw()
     plt.pause(0.001)
     if block:

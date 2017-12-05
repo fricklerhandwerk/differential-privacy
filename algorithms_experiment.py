@@ -1,23 +1,30 @@
-#!/usr/bin/env python3
 
 from functools import partial
-import warnings
+from math import log
 
 from algorithms import *
 
-warnings.filterwarnings('ignore')
-
-N = 1000  # database size
-
-def create_database(p, q, n):
-    return {'a': int(p*n), 'b': int(q*n)}
-
-database = create_database(0.500, 0.500, N)
+database = {'a': 501, 'b': 500}
 queries = [lambda x: x['a'], lambda x: x['b']]
 
 result = report_noisy_max(database, queries, epsilon=0.1)
 
-plot(result, interval=R(0,400), steps=512, block=False)
+diff = result[0].difference(result[1])
+diffCDF = result[0].differenceCDF(result[1])
+
+divergence = State.fromfun(lambda x: log(result[0](x)/result[1](x)),R)
+def interval_divergence(x, interval=100):
+	first = result[0].cdf(x+interval/2)-result[0].cdf(x-interval/2)
+	second = result[1].cdf(x+interval/2)-result[1].cdf(x-interval/2)
+	return log(first/second)
+divergence2 = State.fromfun(interval_divergence,R)
+
+plot(map(lambda x: x.state, result), interval=R(480,520), title="Query distributions", block=False)
+plot([diff], interval=R(0,200), title="PDF of difference between queries", block=False)
+plot([diffCDF], interval=R(0,200), title="CDF of difference between queries", block=False)
+plot([divergence], interval=R(400,700), title="Pointwise divergence", block=False)
+plot([divergence2], interval=R(400,700), title="Divergence on interval of 100", block=False)
 print("P('a' > 'b'):")
-print((result[0] @ result[1]) >= a_larger_b())
+print(result[0].larger(result[1]))
+
 input("Press [enter] to continue.")
