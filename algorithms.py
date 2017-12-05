@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 
 from efprob.dc import *
+from math import copysign
 from math import exp
 
 
 R_plus = R(0, inf)
 R_minus = R(-inf, 0)
+
+def sgn(x):
+    return copysign(1, x)
 
 def Lap(b, m=0):
     def laplace(x):
@@ -23,6 +27,21 @@ def DiffLap(a, b, m=0, n=0):
         else:
             return ((k+l)/(a+b) + (k-l)/(a-b)) / 4
     return State.fromfun(difference, R)
+
+
+def DiffLapCDF(a, b, m=0, n=0):
+    """CDF of difference of two Laplace distributions"""
+    def differenceCDF(x):
+        t = abs(x+n-m)
+        s = sgn(x+n-m)
+        k = exp(-t/a)
+        l = exp(-t/b)
+        if a == b:
+            return -s * (2*a+t)*k / (4*a) + (1 + s)/2
+        else:
+            return -s * ((a*k + b*l)/(a+b) + (a*k - b*l)/(a-b)) / 4 + (1 + s)/2
+    return State.fromfun(differenceCDF, R)
+
 
 def plot(states, preargs=(), interval=None,
          postargs=(), steps=256, block=True):
