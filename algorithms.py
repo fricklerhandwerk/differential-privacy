@@ -12,6 +12,18 @@ def Lap(b, m=0):
         return 1/(2*b)*exp(-abs(x-m)/b)
     return State.fromfun(laplace, R_plus)
 
+def DiffLap(a, b, m=0, n=0):
+    """difference of two Laplace distributions"""
+    def difference(x):
+        t = abs(x+n-m)
+        k = exp(-t/a)
+        l = exp(-t/b)
+        if a == b:
+            return (k + t/a*k) / (4*a)
+        else:
+            return ((k+l)/(a+b) + (k-l)/(a-b)) / 4
+    return State.fromfun(difference, R)
+
 def plot(states, preargs=(), interval=None,
          postargs=(), steps=256, block=True):
     fig, ax = plt.subplots(sharex=True, sharey=True, figsize=(10, 5))
