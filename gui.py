@@ -51,6 +51,9 @@ class Graph(FigCanvas):
             min=0, max=2048, initial=steps)
         self.plot = drawfunc
 
+    @property
+    def abscissa(self):
+        return np.linspace(self.lower.GetValue(), self.upper.GetValue(), self.steps.GetValue())
 
 
 class BarsFrame(wx.Frame):
@@ -100,7 +103,6 @@ class BarsFrame(wx.Frame):
             self.panel, self.draw_divergence,
             lower=80, upper=120)
 
-
         #
         # Layout with box sizers
         #
@@ -112,7 +114,6 @@ class BarsFrame(wx.Frame):
         graphs.Add(self.create_figure(self.difference), 0, wx.EXPAND)
         graphs.Add(self.create_figure(self.divergence), 0, wx.EXPAND)
         graphs.Add(self.create_figure(self.differenceCDF), 0, wx.EXPAND)
-
 
         hbox.Add(graphs, 1)
 
@@ -157,7 +158,7 @@ class BarsFrame(wx.Frame):
         self.label_interval = wx.StaticText(self.panel, -1,
             "Divergence interval")
         self.slider_interval = fs.FloatSpin(self.panel, -1,
-            min_val=0, max_val=1000, value=1, digits=2,
+            min_val=0.01, max_val=1000, value=1, digits=2,
             agwStyle=fs.FS_RIGHT)
         self.a_greater_b = wx.StaticText(self.panel, -1, "")
         self.calculate_a_greater_b()
@@ -190,10 +191,7 @@ class BarsFrame(wx.Frame):
         ax.clear()
 
         a, b = self.get_distributions()
-
-        lower = self.queries.lower.GetValue()
-        upper = self.queries.upper.GetValue()
-        xs = np.linspace(lower, upper, self.queries.steps.GetValue())
+        xs = self.queries.abscissa
         ys = [a(x) for x in xs]
         ax.plot(xs, ys, color="blue", linewidth=2.0, linestyle="-", label="Pr(A)")
         ys = [b(x) for x in xs]
@@ -208,10 +206,7 @@ class BarsFrame(wx.Frame):
         ax.clear()
 
         a, b = self.get_distributions()
-
-        lower = int(self.difference.lower.GetValue())
-        upper = int(self.difference.upper.GetValue())
-        xs = np.linspace(lower, upper, self.difference.steps.GetValue())
+        xs = self.queries.abscissa
         ys = [a.difference(b)(x) for x in xs]
         ax.plot(xs, ys, color="red", linewidth=2.0, linestyle="-", label="Pr(A-B)")
         ax.legend(loc='upper right')
@@ -224,10 +219,7 @@ class BarsFrame(wx.Frame):
         ax.clear()
 
         a, b = self.get_distributions()
-
-        lower = int(self.differenceCDF.lower.GetValue())
-        upper = int(self.differenceCDF.upper.GetValue())
-        xs = np.linspace(lower, upper, self.differenceCDF.steps.GetValue())
+        xs = self.differenceCDF.abscissa
         ys = [a.differenceCDF(b)(x) for x in xs]
         ax.plot(xs, ys, color="red", linewidth=2.0, linestyle="-", label="CDF Pr(A-B)")
         ax.legend(loc='upper right')
@@ -240,11 +232,8 @@ class BarsFrame(wx.Frame):
         ax.clear()
 
         a, b = self.get_distributions()
-
         interval = self.slider_interval.GetValue()
-        lower = int(self.divergence.lower.GetValue())
-        upper = int(self.divergence.upper.GetValue())
-        xs = np.linspace(lower, upper, self.divergence.steps.GetValue())
+
         def divergence(x):
             first = a.cdf(x+interval/2)-a.cdf(x-interval/2)
             second = b.cdf(x+interval/2)-b.cdf(x-interval/2)
@@ -253,6 +242,8 @@ class BarsFrame(wx.Frame):
             except (ZeroDivisionError, ValueError):
                 result = None
             return result
+
+        xs = self.divergence.abscissa
         ys = [divergence(x) for x in xs]
         ax.plot(xs, ys, color="blue", linewidth=2.0, linestyle="-")
 
