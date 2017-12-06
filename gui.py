@@ -88,8 +88,6 @@ class BarsFrame(wx.Frame):
         self.queries = Canvas(self.panel, lower=80, upper=120)
         self.difference = Canvas(self.panel, lower=-100, upper=100)
 
-
-
         #
         # Layout with box sizers
         #
@@ -97,18 +95,8 @@ class BarsFrame(wx.Frame):
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         hbox.Add(self.controls, 0, wx.ALL, border=10)
         hbox.Add(self.create_figure(self.queries), 1, wx.EXPAND)
+        hbox.AddSpacer(10)
         hbox.Add(self.create_figure(self.difference), 1, wx.EXPAND)
-
-        self.spincontrols = [
-            self.queries.lower,
-            self.queries.upper,
-            self.query_a,
-            self.query_b,
-        ]
-
-        for widget in self.spincontrols:
-            self.Bind(wx.EVT_SPINCTRL, self.on_text_enter, widget)
-            self.Bind(wx.EVT_TEXT_ENTER, self.on_bounds_enter, widget)
 
         self.panel.SetSizer(hbox)
         hbox.Fit(self)
@@ -124,15 +112,20 @@ class BarsFrame(wx.Frame):
         bounds.Add(wx.StaticText(self.panel, -1, "Upper bound"))
         bounds.Add(fig.upper)
         vbox.Add(bounds, 0, wx.ALL | wx.EXPAND, border=10)
+
+        for widget in [fig.lower, fig.upper]:
+            self.Bind(wx.EVT_SPINCTRL, self.on_text_enter, widget)
+            self.Bind(wx.EVT_TEXT_ENTER, self.on_bounds_enter, widget)
+
         return vbox
 
     def create_controls(self):
         self.query_a = wx.SpinCtrl(
             self.panel, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT,
-            min=-1000, max=1000, initial=100)
+            min=-1000, max=1000, initial=105)
         self.query_b = wx.SpinCtrl(
             self.panel, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT,
-            min=-1000, max=1000, initial=105)
+            min=-1000, max=1000, initial=100)
 
         self.slider_label = wx.StaticText(self.panel, -1,
             "Epsilon (1/1000): ")
@@ -140,7 +133,11 @@ class BarsFrame(wx.Frame):
             minValue=1, maxValue=1000, value=100,
             style=wx.SL_AUTOTICKS | wx.SL_LABELS)
         self.slider_epsilon.SetTickFreq(1)
+
         self.Bind(wx.EVT_COMMAND_SCROLL_THUMBTRACK, self.on_slider_epsilon, self.slider_epsilon)
+        for widget in [self.query_a, self.query_b]:
+            self.Bind(wx.EVT_SPINCTRL, self.on_text_enter, widget)
+            self.Bind(wx.EVT_TEXT_ENTER, self.on_bounds_enter, widget)
 
         controls = wx.BoxSizer(wx.VERTICAL)
         flags = wx.EXPAND | wx.ALL | wx.ALIGN_CENTER_VERTICAL
@@ -167,12 +164,13 @@ class BarsFrame(wx.Frame):
         lower = self.queries.lower.GetValue()
         upper = self.queries.upper.GetValue()
         xs = np.linspace(lower, upper, 512)
-        for f in [a,b]:
-            ys = [f(x) for x in xs]
-            ax.plot(xs, ys, color="blue", linewidth=2.0, linestyle="-")
-        ax.set_xlabel("Query distributions")
+        ys = [a(x) for x in xs]
+        ax.plot(xs, ys, color="blue", linewidth=2.0, linestyle="-", label="Query A")
+        ys = [b(x) for x in xs]
+        ax.plot(xs, ys, color="green", linewidth=2.0, linestyle="-", label="Query B")
+        ax.legend(loc='upper right')
 
-        self.queries.figure.suptitle("PDF of query difference")
+        self.queries.figure.suptitle("Query distributions")
         self.queries.draw()
 
     def draw_difference(self):
@@ -187,10 +185,10 @@ class BarsFrame(wx.Frame):
         upper = int(self.difference.upper.GetValue())
         xs = np.linspace(lower, upper, 512)
         ys = [a.difference(b)(x) for x in xs]
-        ax.plot(xs, ys, color="red", linewidth=2.0, linestyle="-")
-        ax.set_xlabel("PDF of difference between queries")
+        ax.plot(xs, ys, color="red", linewidth=2.0, linestyle="-", label="P(A-B)")
+        ax.legend(loc='upper right')
 
-        self.difference.figure.suptitle("PDF of query difference")
+        self.difference.figure.suptitle("PDF of difference between queries")
         self.difference.draw()
 
     def on_slider_epsilon(self, event):
