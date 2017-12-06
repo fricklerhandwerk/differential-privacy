@@ -1,20 +1,3 @@
-"""
-This demo demonstrates how to embed a matplotlib (mpl) plot
-into a wxPython GUI application, including:
-
-* Using the navigation toolbar
-* Adding data to the plot
-* Dynamically modifying the plot's properties
-* Processing mpl events
-* Saving the plot to a file from a menu
-
-The main goal is to serve as a basis for developing rich wx GUI
-applications featuring mpl plots (using the mpl OO API).
-
-Eli Bendersky (eliben@gmail.com)
-License: this code is in the public domain
-Last modified: 30.07.2008
-"""
 import os
 import pprint
 import random
