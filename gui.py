@@ -34,8 +34,8 @@ from math import inf
 
 from algorithms import *
 
-class Canvas(FigCanvas):
-    def __init__(self, parent, lower=0, upper=100):
+class Graph(FigCanvas):
+    def __init__(self, parent, drawfunc, lower=0, upper=100, steps=256):
         self.figure = Figure()
         super(FigCanvas, self).__init__(parent, -1, self.figure)
         self.axes = self.figure.add_subplot(1,1,1)
@@ -45,6 +45,11 @@ class Canvas(FigCanvas):
         self.upper = wx.SpinCtrl(
             parent, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=(60, -1),
             min=-1000, max=1000, initial=upper)
+        self.steps = wx.SpinCtrl(
+            parent, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=(60, -1),
+            min=0, max=2048, initial=steps)
+        self.plot = drawfunc
+
 
 
 class BarsFrame(wx.Frame):
@@ -79,14 +84,14 @@ class BarsFrame(wx.Frame):
         self.SetMenuBar(self.menubar)
 
     def create_main_panel(self):
-        """ Creates the main panel with all the controls on it:
-             * mpl canvas
-             * mpl navigation toolbar
-             * Control panel for interaction
-        """
         self.panel = wx.Panel(self)
-        self.queries = Canvas(self.panel, lower=80, upper=120)
-        self.difference = Canvas(self.panel, lower=-100, upper=100)
+
+        self.queries = Graph(
+            self.panel, self.draw_queries,
+            lower=80, upper=120, steps=512)
+        self.difference = Graph(
+            self.panel, self.draw_difference,
+            lower=-100, upper=100)
 
         #
         # Layout with box sizers
@@ -109,13 +114,16 @@ class BarsFrame(wx.Frame):
         bounds.Add(wx.StaticText(self.panel, -1, "Lower bound"))
         bounds.Add(fig.lower)
         bounds.AddStretchSpacer()
+        bounds.Add(wx.StaticText(self.panel, -1, "Steps"))
+        bounds.Add(fig.steps)
+        bounds.AddStretchSpacer()
         bounds.Add(wx.StaticText(self.panel, -1, "Upper bound"))
         bounds.Add(fig.upper)
         vbox.Add(bounds, 0, wx.ALL | wx.EXPAND, border=10)
 
-        for widget in [fig.lower, fig.upper]:
-            self.Bind(wx.EVT_SPINCTRL, self.on_text_enter, widget)
-            self.Bind(wx.EVT_TEXT_ENTER, self.on_bounds_enter, widget)
+        for widget in [fig.lower, fig.upper, fig.steps]:
+            self.Bind(wx.EVT_SPINCTRL, fig.plot, widget)
+            self.Bind(wx.EVT_TEXT_ENTER, on_bounds_enter, widget)
 
         return vbox
 
@@ -137,7 +145,7 @@ class BarsFrame(wx.Frame):
         self.Bind(wx.EVT_COMMAND_SCROLL_THUMBTRACK, self.on_slider_epsilon, self.slider_epsilon)
         for widget in [self.query_a, self.query_b]:
             self.Bind(wx.EVT_SPINCTRL, self.on_text_enter, widget)
-            self.Bind(wx.EVT_TEXT_ENTER, self.on_bounds_enter, widget)
+            self.Bind(wx.EVT_TEXT_ENTER, on_bounds_enter, widget)
 
         controls = wx.BoxSizer(wx.VERTICAL)
         flags = wx.EXPAND | wx.ALL | wx.ALIGN_CENTER_VERTICAL
@@ -150,10 +158,10 @@ class BarsFrame(wx.Frame):
         return controls
 
     def draw_figure(self):
-        self.draw_queries()
-        self.draw_difference()
+        self.queries.plot()
+        self.difference.plot()
 
-    def draw_queries(self):
+    def draw_queries(self, event=None):
         ax = self.queries.axes
         ax.clear()
 
@@ -163,17 +171,17 @@ class BarsFrame(wx.Frame):
 
         lower = self.queries.lower.GetValue()
         upper = self.queries.upper.GetValue()
-        xs = np.linspace(lower, upper, 512)
+        xs = np.linspace(lower, upper, self.queries.steps.GetValue())
         ys = [a(x) for x in xs]
-        ax.plot(xs, ys, color="blue", linewidth=2.0, linestyle="-", label="Query A")
+        ax.plot(xs, ys, color="blue", linewidth=2.0, linestyle="-", label="Pr(A)")
         ys = [b(x) for x in xs]
-        ax.plot(xs, ys, color="green", linewidth=2.0, linestyle="-", label="Query B")
+        ax.plot(xs, ys, color="green", linewidth=2.0, linestyle="-", label="Pr(B)")
         ax.legend(loc='upper right')
 
         self.queries.figure.suptitle("Query distributions")
         self.queries.draw()
 
-    def draw_difference(self):
+    def draw_difference(self, event=None):
         ax = self.difference.axes
         ax.clear()
 
@@ -183,9 +191,9 @@ class BarsFrame(wx.Frame):
 
         lower = int(self.difference.lower.GetValue())
         upper = int(self.difference.upper.GetValue())
-        xs = np.linspace(lower, upper, 512)
+        xs = np.linspace(lower, upper, self.difference.steps.GetValue())
         ys = [a.difference(b)(x) for x in xs]
-        ax.plot(xs, ys, color="red", linewidth=2.0, linestyle="-", label="P(A-B)")
+        ax.plot(xs, ys, color="red", linewidth=2.0, linestyle="-", label="Pr(A-B)")
         ax.legend(loc='upper right')
 
         self.difference.figure.suptitle("PDF of difference between queries")
@@ -197,18 +205,7 @@ class BarsFrame(wx.Frame):
     def on_text_enter(self, event):
         self.draw_figure()
 
-    def on_bounds_enter(self, event):
-        # workaround for annoying behavior of wxPython.
-        # > if the user modifies the text in the edit part of the spin control directly,
-        #   the EVT_TEXT is generated, like for the wx.TextCtrl. When the use enters text
-        #   into the text area, the text is not validated until the control loses focus
-        #   (e.g. by using the TAB key).
-        # <https://wxpython.org/Phoenix/docs/html/wx.SpinCtrl.html#styles-window-styles>
-        # solution: cycle focus
-        spinctrl = event.GetEventObject()
-        textctrl, spinbutton = spinctrl.GetChildren()
-        spinbutton.SetFocus()
-        spinctrl.SetFocus()
+
 
 
     def on_save_plot(self, event):
@@ -240,6 +237,19 @@ class BarsFrame(wx.Frame):
         dlg.ShowModal()
         dlg.Destroy()
 
+
+def on_bounds_enter(event):
+    # workaround for annoying behavior of wxPython.
+    # > if the user modifies the text in the edit part of the spin control directly,
+    #   the EVT_TEXT is generated, like for the wx.TextCtrl. When the use enters text
+    #   into the text area, the text is not validated until the control loses focus
+    #   (e.g. by using the TAB key).
+    # <https://wxpython.org/Phoenix/docs/html/wx.SpinCtrl.html#styles-window-styles>
+    # solution: cycle focus
+    spinctrl = event.GetEventObject()
+    textctrl, spinbutton = spinctrl.GetChildren()
+    spinbutton.SetFocus()
+    spinctrl.SetFocus()
 
 if __name__ == '__main__':
     app = wx.App()
