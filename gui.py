@@ -221,13 +221,17 @@ class BarsFrame(wx.Frame):
             first = a.cdf(x+interval/2)-a.cdf(x-interval/2)
             second = b.cdf(x+interval/2)-b.cdf(x-interval/2)
             try:
-                result = log(first/second)
+                one = log(first/second)
+                two = log((1-first)/(1-second))
+                result = max(abs(one),abs(two))
             except (ZeroDivisionError, ValueError):
                 result = None
             return result
 
         def pointwise(x):
-            return log(a(x)/b(x))
+            one = log(a(x)/b(x))
+            two = log((1-a(x))/(1-b(x)))
+            return max(abs(one), abs(two))
 
         xs = self.divergence.abscissa
         ys = [divergence(x) for x in xs]

@@ -20,10 +20,11 @@ A = Laplace(1/epsilon, 0)
 def f(x, y):
     B = Laplace(A.spread, A.mean + x)
     C = Laplace(B.spread, B.mean + y)
-    return log(B.larger(A)/C.larger(A))
-def g(x,y):
-    return sin(sqrt(x**2 + y**2))
-X = np.arange(-300,75,1)
+    one = log(B.larger(A)/C.larger(A))
+    two = log(A.larger(B)/A.larger(C))
+    # return max(abs(one), abs(two))
+    return one
+X = np.arange(-150,150,1)
 Y = np.arange(-5,5,0.25)
 X, Y = np.meshgrid(X, Y)
 
@@ -35,4 +36,3 @@ ax.set_ylabel('Y')
 ax.set_zlabel('Z')
 figure.colorbar(surface)
 plt.show()
-input("...")
