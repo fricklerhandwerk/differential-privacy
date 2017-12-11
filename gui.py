@@ -141,7 +141,7 @@ class BarsFrame(wx.Frame):
         self.label_interval = wx.StaticText(self.panel, -1,
             "Divergence interval")
         self.slider_interval = fs.FloatSpin(self.panel, -1,
-            min_val=0.01, max_val=1000, value=1, digits=2,
+            min_val=0.01, max_val=1000, value=10, digits=2,
             agwStyle=fs.FS_RIGHT)
         self.a_greater_b = wx.StaticText(self.panel, -1, "")
         self.calculate_a_greater_b()
@@ -226,9 +226,14 @@ class BarsFrame(wx.Frame):
                 result = None
             return result
 
+        def pointwise(x):
+            return log(a(x)/b(x))
+
         xs = self.divergence.abscissa
         ys = [divergence(x) for x in xs]
         ax.plot(xs, ys, color="blue", linewidth=2.0, linestyle="-")
+        ys = [pointwise(x) for x in xs]
+        ax.plot(xs, ys, color="red", linewidth=2.0, linestyle="-")
 
         self.divergence.figure.suptitle("Divergence of queries on [x-{0},x+{0}]".format(interval/2))
         self.divergence.draw()
