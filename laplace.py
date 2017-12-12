@@ -42,7 +42,7 @@ class Graph(FigCanvas):
 class BarsFrame(wx.Frame):
     """ The main frame of the application
     """
-    title = 'Report Noisy Max'
+    title = 'Differential Privacy of the Laplace mechanism'
 
     def __init__(self):
         wx.Frame.__init__(self, None, -1, self.title)
