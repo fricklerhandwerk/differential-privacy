@@ -57,6 +57,7 @@ class Laplace(object):
     def larger(self, other):
         return 1 - self.differenceCDF(other)(0)
 
+
 def Lap(b, m=0):
     def laplace(x):
         return exp(-abs(x-m)/b) / (2*b)
