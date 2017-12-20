@@ -1,12 +1,14 @@
-from pprint import pprint as pp
-
 import gmpy2
-from gmpy2 import comb, fsum, mpfr, exp
+from gmpy2 import comb
+from gmpy2 import exp
+from gmpy2 import fsum
 from math import log
+
 from efprob.dc import *
 from algorithms import *
 
 gmpy2.get_context().precision = 1000
+
 
 def accuracy(k, b, e):
     return 8*(log(k) + log(2/b))/e
@@ -21,42 +23,42 @@ e1 = 0.1
 e2 = 0.1
 e = e1 + e2
 T = 0
-a = accuracy(k, b, e)
-a_ = reduced_accuracy(b, e)
-
-threshold = lambda x: exp(-x/(1/e1))
-queries = lambda x: min(1, k*exp(-x/(2/e2)))
+a_q = accuracy(k, b, e)
+a_T = reduced_accuracy(b, e)
 
 
-def the_real_shit(x):
-    """Probability that any of k queries is >= x"""
-    def dude(l):
-        return (-gmpy2.exp(-x/(2/e2)))**l
-    result = -fsum(comb(k, l) * dude(l) for l in range(1, k+1))
-    # if abs(result) > 1.1:
-    #     return 0
-    return result
+def threshold(x):
+    return exp(-x*e1)
 
 
-def totalfailure(x):
-    """Union bound on total noise"""
+def queries(x):
+    """upper bound on probability that any of k queries is >= x"""
+    return min(1, k*exp(-x*e2/2))
+
+
+def queries_improved(x):
+    """precise probability that any of k queries is >= x"""
+    def f(l):
+        return (-1)**l * exp(-l*x*e2/2)
+    result = -fsum(comb(k, l) * f(l) for l in range(1, k+1))
+    return min(1, result)
+
+
+def total(x):
+    """bound on total noise"""
     return min(1, threshold(x) + queries(x))
 
 
-def absolutefailure(x):
-    """precise calculation of total noise"""
-    return min(1, threshold(x) + the_real_shit(x))
+def total_improved(x):
+    """improved bound of total noise"""
+    return min(1, threshold(x) + queries_improved(x))
 
-shit = State.fromfun(threshold, R)
-shit2 = State.fromfun(queries, R)
-shit2a = State.fromfun(the_real_shit, R)
-shit3 = State.fromfun(totalfailure, R)
-shit4 = State.fromfun(absolutefailure, R)
-print("alpha/2:", a/2)
-print("alpha_/2:", a_/2)
-print("beta/2:", b/2)
-shit.plot(R(00, a+10))
-shit2.plot(R(00, a+10))
-shit2a.plot(R(00, a+10))
-shit3.plot(R(00, a+10))
-shit4.plot(R(00, a+10))
+
+print("alpha_q/2:", a_q/2)
+print("alpha_T/2:", a_T/2)
+print("b/2:", b/2)
+State.fromfun(threshold, R).plot(R(0, a_q))
+State.fromfun(queries, R).plot(R(0, a_q))
+State.fromfun(queries_improved, R).plot(R(0, a_q))
+State.fromfun(total, R).plot(R(0, a_q))
+State.fromfun(total_improved, R).plot(R(0, a_q))
