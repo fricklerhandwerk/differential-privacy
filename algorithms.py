@@ -42,11 +42,17 @@ class Laplace(object):
     def __init__(self, spread, mean=0):
         self.spread = spread
         self.mean = mean
-        self.state = Lap(spread, mean)
-        self.cdf = LapCDF(spread, mean)
 
     def __call__(self, args):
         return self.state(args)
+
+    @property
+    def state(self):
+        return Lap(self.spread, self.mean)
+
+    @property
+    def cdf(self):
+        return LapCDF(self.spread, self.mean)
 
     def difference(self, other):
         return DiffLap(self.spread, other.spread, self.mean, other.mean)
