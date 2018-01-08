@@ -44,17 +44,20 @@ class Model(object):
         return random.randint(0, self.maxint)
 
     def push(self):
-        self.response.append(randbool())
-        self.queries.append(randint)
+        self.response.append(self.randbool())
+        self.queries.append(self.randint())
         self.shift_vector.append(self.shift)
         self.length += 1
 
     def pop(self):
-        if self.length > 0:
+        if self.length > 1:
             self.response.pop()
             self.queries.pop()
             self.shift_vector.pop()
             self.length -= 1
+            return True
+        else:
+            return False
 
 
 class StaticBox(wx.StaticBox):
@@ -120,11 +123,15 @@ class BarGraph(FigCanvas):
 class Frame(wx.Frame):
     title = 'Differential Privacy of the Above Threshold Mechanism'
 
+    head_size = (80, -1)
+    element_size = (30, -1)
+    spinctrl_size = (60, -1)
+
     def __init__(self):
         wx.Frame.__init__(self, None, title=self.title)
 
         self.menubar = self.create_menu()
-        self.model = self.create_model()
+        self.model = Model(100, 0.2, 0.1)
         self.create_view()
 
         self.draw()
@@ -146,10 +153,6 @@ class Frame(wx.Frame):
         self.SetMenuBar(menubar)
 
         return menubar
-
-    def create_model(self):
-        # TODO: init input vectors
-        return Model()
 
     def create_view(self):
         self.main_panel = wx.Panel(self)
@@ -213,82 +216,68 @@ class Frame(wx.Frame):
         self.a_greater_b = wx.StaticText(self.panel, -1, "")
         self.calculate_a_greater_b()
 
-        self.Bind(wx.EVT_COMMAND_SCROLL_THUMBTRACK, self.on_parameter_change, self.slider_epsilon)
         self.Bind(fs.EVT_FLOATSPIN, self.on_slider_interval, self.slider_interval)
         for widget in [self.query_a, self.query_b]:
             self.Bind(wx.EVT_SPINCTRL, self.on_parameter_change, widget)
             self.Bind(wx.EVT_TEXT_ENTER, on_bounds_enter, widget)
 
-        controls = wx.BoxSizer(wx.VERTICAL)
-        flags = wx.EXPAND | wx.TOP | wx.BOTTOM
-        controls.Add(wx.StaticText(self.panel, -1, "Query A"))
-        controls.Add(self.query_a, 0, border=3, flag=flags)
-        controls.Add(wx.StaticText(self.panel, -1, "Query B"))
-        controls.Add(self.query_b, 0, border=3, flag=flags)
-        controls.Add(self.label_epsilon, 0, flag=flags)
-        controls.Add(self.slider_epsilon, 0, border=3, flag=flags)
-        controls.Add(self.label_interval, 0, flag=flags)
-        controls.Add(self.slider_interval, 0, border=3, flag=flags)
-        controls.Add(self.a_greater_b, 0, border=5, flag=flags)
         return controls
 
     def create_vector_control(self, parent):
         panel = wx.Panel(parent)
 
-        head_size = (80, -1)
-        element_size = (30, -1)
-
         response_label = wx.StaticText(
             panel, label="Response", style=wx.ALIGN_RIGHT)
-        response_button = wx.Button(panel, label="Random", size=head_size)
-        response_vector = wx.BoxSizer(wx.HORIZONTAL)
+        response_button = wx.Button(panel, label="Random", size=self.head_size)
+        self.response_vector = wx.BoxSizer(wx.HORIZONTAL)
         for i in self.model.response:
-            response_vector.Add(wx.Button(
+            self.response_vector.Add(wx.Button(
                 panel, label=("T" if i else "F"),
-                size=element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+                size=self.element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
 
         queries_label = wx.StaticText(
             panel, label="Queries", style=wx.ALIGN_RIGHT)
-        queries_random = wx.Button(panel, label="Random", size=head_size)
-        queries_vector = wx.BoxSizer(wx.HORIZONTAL)
+        queries_random = wx.Button(panel, label="Random", size=self.head_size)
+        self.queries_vector = wx.BoxSizer(wx.HORIZONTAL)
         for i in self.model.queries:
-            queries_vector.Add(IntCtrl(
+            self.queries_vector.Add(IntCtrl(
                 panel, value=i, min=0,
                 style=wx.TE_PROCESS_ENTER | wx.TE_RIGHT,
-                size=element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+                size=self.element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
 
         shift_label = wx.StaticText(
             panel, label="Shift", style=wx.ALIGN_RIGHT)
         shift_control = wx.SpinCtrl(
             panel, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT,
-            min=0, max=1000, initial=1, size=head_size)
-        shift_vector = wx.BoxSizer(wx.HORIZONTAL)
+            min=0, max=1000, initial=1, size=self.head_size)
+        self.shift_vector = wx.BoxSizer(wx.HORIZONTAL)
         for i in self.model.shift_vector:
-            shift_vector.Add(IntCtrl(
+            self.shift_vector.Add(IntCtrl(
                 panel, value=i, min=0,
                 style=wx.TE_PROCESS_ENTER | wx.TE_RIGHT,
-                size=element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+                size=self.element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
 
-        plus = wx.Button(panel, label="+", size=element_size)
-        minus = wx.Button(panel, label="-", size=element_size)
+        plus = wx.Button(panel, label="+", size=self.element_size)
+        minus = wx.Button(panel, label="-", size=self.element_size)
+
+        self.Bind(wx.EVT_BUTTON, self.push, plus)
+        self.Bind(wx.EVT_BUTTON, self.pop, minus)
 
         sizer = wx.FlexGridSizer(rows=3, cols=4, gap=(5, 5))
         sizer.AddGrowableCol(2)
         sizer.Add(response_label, flag=wx.EXPAND)
         sizer.Add(response_button)
-        sizer.Add(response_vector, flag=wx.EXPAND)
-        # some_button = wx.Button(vector_control, label="hans")
-        # sizer.Add(some_button, flag=wx.EXPAND)
+        sizer.Add(self.response_vector, flag=wx.EXPAND)
         sizer.Add(plus)
 
         sizer.Add(queries_label, flag=wx.EXPAND)
         sizer.Add(queries_random)
-        sizer.Add(queries_vector, flag=wx.EXPAND)
+        sizer.Add(self.queries_vector, flag=wx.EXPAND)
         sizer.Add(minus)
 
         sizer.Add(shift_label, flag=wx.EXPAND)
         sizer.Add(shift_control)
-        sizer.Add(shift_vector, flag=wx.EXPAND)
+        sizer.Add(self.shift_vector, flag=wx.EXPAND)
 
         panel.SetSizer(sizer)
         sizer.Fit(panel)
@@ -297,12 +286,11 @@ class Frame(wx.Frame):
     def create_parameter_control(self, parent):
         panel = StaticBox(parent, label="Algorithm parameters")
 
-        spinctrl_size = (60, -1)
         threshold_label = wx.StaticText(
             panel, label="T", style=wx.ALIGN_RIGHT)
         self.threshold = wx.SpinCtrl(
             panel,
-            style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=spinctrl_size,
+            style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=self.spinctrl_size,
             min=0, max=1000, initial=100)
 
         epsilon1_label = wx.StaticText(
@@ -310,20 +298,20 @@ class Frame(wx.Frame):
         self.epsilon1 = fs.FloatSpin(
             panel, agwStyle=fs.FS_RIGHT,
             min_val=0.001, max_val=1, value=0.1,
-            increment=0.01, digits=3, size=spinctrl_size)
+            increment=0.01, digits=3, size=self.spinctrl_size)
 
         epsilon2_label = wx.StaticText(
             panel, label="ε₂ (¹⁄₁₀₀₀)", style=wx.ALIGN_RIGHT)
         self.epsilon2 = fs.FloatSpin(
             panel, agwStyle=fs.FS_RIGHT,
             min_val=0.001, max_val=1, value=0.1,
-            increment=0.01, digits=3, size=spinctrl_size)
+            increment=0.01, digits=3, size=self.spinctrl_size)
 
         sensitivity_label = wx.StaticText(
             panel, label="Δf", style=wx.ALIGN_RIGHT)
         self.sensitivity = wx.SpinCtrl(
             panel,
-            style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=spinctrl_size,
+            style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=self.spinctrl_size,
             min=0, max=100, initial=1)
 
         monotonic_label = wx.StaticText(
@@ -428,6 +416,39 @@ class Frame(wx.Frame):
 
     def draw(self):
         pass
+
+    def push(self, event):
+        self.model.push()
+        parent = self.response_vector.ContainingWindow
+        self.response_vector.Add(wx.Button(
+                parent, label=("T" if self.model.response[-1] else "F"),
+                size=self.element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+
+        parent = self.queries_vector.ContainingWindow
+        self.queries_vector.Add(IntCtrl(
+            parent, value=self.model.queries[-1], min=0,
+            style=wx.TE_PROCESS_ENTER | wx.TE_RIGHT,
+            size=self.element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+
+        parent = self.shift_vector.ContainingWindow
+        self.shift_vector.Add(IntCtrl(
+            parent, value=self.model.shift_vector[-1], min=0,
+            style=wx.TE_PROCESS_ENTER | wx.TE_RIGHT,
+            size=self.element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+
+        self.layout()
+
+    def pop(self, event):
+        if self.model.pop():
+            for v in [self.response_vector, self.queries_vector, self.shift_vector]:
+                idx = len(v.GetChildren()) - 1
+                v.GetChildren()[idx].DeleteWindows()
+                v.Remove(idx)
+
+        self.layout()
+
+    def layout(self):
+        self.main_panel.Layout()
 
     def on_vector_change(self, event):
         pass
