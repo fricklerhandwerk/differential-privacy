@@ -26,7 +26,7 @@ class Model(object):
 
         self.random_response()
         self.random_queries()
-        self.reset_shift_vector()
+        self.set_shift_vector()
 
     def random_response(self):
         self.response = [self.randbool() for _ in range(self.length)]
@@ -34,7 +34,7 @@ class Model(object):
     def random_queries(self):
         self.queries = [self.randint() for _ in range(self.length)]
 
-    def reset_shift_vector(self):
+    def set_shift_vector(self):
         self.shift_vector = [self.shift] * self.length
 
     def randbool(self):
@@ -235,7 +235,7 @@ class Frame(wx.Frame):
 
         queries_label = wx.StaticText(
             panel, label="Queries", style=wx.ALIGN_RIGHT)
-        queries_random = wx.Button(panel, label="Random", size=self.head_size)
+        queries_button = wx.Button(panel, label="Random", size=self.head_size)
         self.queries_vector = wx.BoxSizer(wx.HORIZONTAL)
         for i in self.model.queries:
             self.create_queries_element(panel, i)
@@ -252,6 +252,9 @@ class Frame(wx.Frame):
         plus = wx.Button(panel, label="+", size=self.element_size)
         minus = wx.Button(panel, label="-", size=self.element_size)
 
+        self.Bind(wx.EVT_BUTTON, self.random_response, response_button)
+        self.Bind(wx.EVT_BUTTON, self.random_queries, queries_button)
+        self.Bind(wx.EVT_SPINCTRL, self.set_shift_vector, shift_control)
         self.Bind(wx.EVT_BUTTON, self.push, plus)
         self.Bind(wx.EVT_BUTTON, self.pop, minus)
 
@@ -263,7 +266,7 @@ class Frame(wx.Frame):
         sizer.Add(plus)
 
         sizer.Add(queries_label, flag=wx.EXPAND)
-        sizer.Add(queries_random)
+        sizer.Add(queries_button)
         sizer.Add(self.queries_vector, flag=wx.EXPAND)
         sizer.Add(minus)
 
@@ -454,6 +457,22 @@ class Frame(wx.Frame):
                 v.Remove(idx)
 
         self.layout()
+
+    def random_response(self, event):
+        self.model.random_response()
+        for i, v in enumerate(self.response_vector.GetChildren()):
+            v.Window.SetLabel("T" if self.model.response[i] else "F")
+
+    def random_queries(self, event):
+        self.model.random_queries()
+        for i, v in enumerate(self.queries_vector.GetChildren()):
+            v.Window.SetValue(self.model.queries[i])
+
+    def set_shift_vector(self, event):
+        self.model.shift = event.GetEventObject().GetValue()
+        self.model.set_shift_vector()
+        for i, v in enumerate(self.shift_vector.GetChildren()):
+            v.Window.SetValue(self.model.shift_vector[i])
 
     def on_response_button(self, event):
         button = event.GetEventObject()
