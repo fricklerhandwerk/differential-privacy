@@ -16,10 +16,45 @@ from algorithms import *
 
 
 class Model(object):
-    n = 5
-    response = [random.choice([True, False]) for _ in range(n)]
-    queries = [random.randint(0, 1000) for _ in range(n)]
-    shift = [1] * n
+    def __init__(
+        self, threshold, e1, e2, sensitivity=1, monotonic=True,
+            length=5, shift=1, maxint=1000):
+
+        self.maxint = maxint
+        self.shift = shift
+        self.length = length
+
+        self.random_response()
+        self.random_queries()
+        self.reset_shift_vector()
+
+    def random_response(self):
+        self.response = [self.randbool() for _ in range(self.length)]
+
+    def random_queries(self):
+        self.queries = [self.randint() for _ in range(self.length)]
+
+    def reset_shift_vector(self):
+        self.shift_vector = [self.shift] * self.length
+
+    def randbool(self):
+        return random.choice([True, False])
+
+    def randint(self):
+        return random.randint(0, self.maxint)
+
+    def push(self):
+        self.response.append(randbool())
+        self.queries.append(randint)
+        self.shift_vector.append(self.shift)
+        self.length += 1
+
+    def pop(self):
+        if self.length > 0:
+            self.response.pop()
+            self.queries.pop()
+            self.shift_vector.pop()
+            self.length -= 1
 
 
 class StaticBox(wx.StaticBox):
@@ -228,7 +263,7 @@ class Frame(wx.Frame):
             panel, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT,
             min=0, max=1000, initial=1, size=head_size)
         shift_vector = wx.BoxSizer(wx.HORIZONTAL)
-        for i in self.model.shift:
+        for i in self.model.shift_vector:
             shift_vector.Add(IntCtrl(
                 panel, value=i, min=0,
                 style=wx.TE_PROCESS_ENTER | wx.TE_RIGHT,
