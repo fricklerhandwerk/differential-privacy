@@ -272,13 +272,17 @@ class Frame(wx.Frame):
 
         epsilon1_label = wx.StaticText(
             panel, label="ε₁ (¹⁄₁₀₀₀)", style=wx.ALIGN_RIGHT)
-        self.epsilon1 = fs.FloatSpin(panel, agwStyle=fs.FS_RIGHT,
-            min_val=0.001, max_val=1, value=0.1, digits=3, size=spinctrl_size)
+        self.epsilon1 = fs.FloatSpin(
+            panel, agwStyle=fs.FS_RIGHT,
+            min_val=0.001, max_val=1, value=0.1,
+            increment=0.01, digits=3, size=spinctrl_size)
 
         epsilon2_label = wx.StaticText(
             panel, label="ε₂ (¹⁄₁₀₀₀)", style=wx.ALIGN_RIGHT)
-        self.epsilon2 = fs.FloatSpin(panel, agwStyle=fs.FS_RIGHT,
-            min_val=0.001, max_val=1, value=0.1, digits=3, size=spinctrl_size)
+        self.epsilon2 = fs.FloatSpin(
+            panel, agwStyle=fs.FS_RIGHT,
+            min_val=0.001, max_val=1, value=0.1,
+            increment=0.01, digits=3, size=spinctrl_size)
 
         sensitivity_label = wx.StaticText(
             panel, label="Δf", style=wx.ALIGN_RIGHT)
