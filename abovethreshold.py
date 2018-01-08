@@ -231,19 +231,14 @@ class Frame(wx.Frame):
         response_button = wx.Button(panel, label="Random", size=self.head_size)
         self.response_vector = wx.BoxSizer(wx.HORIZONTAL)
         for i in self.model.response:
-            self.response_vector.Add(wx.Button(
-                panel, label=("T" if i else "F"),
-                size=self.element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+            self.create_response_element(panel, i)
 
         queries_label = wx.StaticText(
             panel, label="Queries", style=wx.ALIGN_RIGHT)
         queries_random = wx.Button(panel, label="Random", size=self.head_size)
         self.queries_vector = wx.BoxSizer(wx.HORIZONTAL)
         for i in self.model.queries:
-            self.queries_vector.Add(IntCtrl(
-                panel, value=i, min=0,
-                style=wx.TE_PROCESS_ENTER | wx.TE_RIGHT,
-                size=self.element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+            self.create_queries_element(panel, i)
 
         shift_label = wx.StaticText(
             panel, label="Shift", style=wx.ALIGN_RIGHT)
@@ -252,10 +247,7 @@ class Frame(wx.Frame):
             min=0, max=1000, initial=1, size=self.head_size)
         self.shift_vector = wx.BoxSizer(wx.HORIZONTAL)
         for i in self.model.shift_vector:
-            self.shift_vector.Add(IntCtrl(
-                panel, value=i, min=0,
-                style=wx.TE_PROCESS_ENTER | wx.TE_RIGHT,
-                size=self.element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+            self.create_shift_element(panel, i)
 
         plus = wx.Button(panel, label="+", size=self.element_size)
         minus = wx.Button(panel, label="-", size=self.element_size)
@@ -333,6 +325,23 @@ class Frame(wx.Frame):
 
         panel.SetSizer(sizer)
         return panel
+
+    def create_response_element(self, parent, value):
+        self.response_vector.Add(wx.Button(
+            parent, label=("T" if value else "F"),
+            size=self.element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+
+    def create_queries_element(self, parent, value):
+        self.queries_vector.Add(IntCtrl(
+            parent, value=value, min=0,
+            style=wx.TE_PROCESS_ENTER | wx.TE_RIGHT,
+            size=self.element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+
+    def create_shift_element(self, parent, value):
+        self.shift_vector.Add(IntCtrl(
+            parent, value=value, min=0,
+            style=wx.TE_PROCESS_ENTER | wx.TE_RIGHT,
+            size=self.element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
 
     def create_accuracy_control(self, parent):
         panel = StaticBox(parent, label="Compute accuracy")
@@ -419,22 +428,12 @@ class Frame(wx.Frame):
 
     def push(self, event):
         self.model.push()
-        parent = self.response_vector.ContainingWindow
-        self.response_vector.Add(wx.Button(
-                parent, label=("T" if self.model.response[-1] else "F"),
-                size=self.element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+        parent = self.vector_control
+        self.create_response_element(parent, self.model.response[-1])
 
-        parent = self.queries_vector.ContainingWindow
-        self.queries_vector.Add(IntCtrl(
-            parent, value=self.model.queries[-1], min=0,
-            style=wx.TE_PROCESS_ENTER | wx.TE_RIGHT,
-            size=self.element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+        self.create_queries_element(parent, self.model.queries[-1])
 
-        parent = self.shift_vector.ContainingWindow
-        self.shift_vector.Add(IntCtrl(
-            parent, value=self.model.shift_vector[-1], min=0,
-            style=wx.TE_PROCESS_ENTER | wx.TE_RIGHT,
-            size=self.element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+        self.create_shift_element(parent, self.model.shift_vector[-1])
 
         self.layout()
 
