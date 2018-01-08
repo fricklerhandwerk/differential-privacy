@@ -327,21 +327,30 @@ class Frame(wx.Frame):
         return panel
 
     def create_response_element(self, parent, value):
-        self.response_vector.Add(wx.Button(
+        button = wx.Button(
             parent, label=("T" if value else "F"),
-            size=self.element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+            size=self.element_size)
+        button.index = self.response_vector.GetItemCount()
+        self.response_vector.Add(button, flag=wx.EXPAND | wx.RIGHT, border=5)
+        self.Bind(wx.EVT_BUTTON, self.on_response_button, button)
 
     def create_queries_element(self, parent, value):
-        self.queries_vector.Add(IntCtrl(
+        field = IntCtrl(
             parent, value=value, min=0,
             style=wx.TE_PROCESS_ENTER | wx.TE_RIGHT,
-            size=self.element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+            size=self.element_size)
+        field.index = self.queries_vector.GetItemCount()
+        self.queries_vector.Add(field, flag=wx.EXPAND | wx.RIGHT, border=5)
+        self.Bind(wx.EVT_TEXT_ENTER, self.on_query_field, field)
 
     def create_shift_element(self, parent, value):
-        self.shift_vector.Add(IntCtrl(
+        field = IntCtrl(
             parent, value=value, min=0,
             style=wx.TE_PROCESS_ENTER | wx.TE_RIGHT,
-            size=self.element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+            size=self.element_size)
+        field.index = self.shift_vector.GetItemCount()
+        self.shift_vector.Add(field, flag=wx.EXPAND | wx.RIGHT, border=5)
+        self.Bind(wx.EVT_TEXT_ENTER, self.on_shift_field, field)
 
     def create_accuracy_control(self, parent):
         panel = StaticBox(parent, label="Compute accuracy")
@@ -445,6 +454,22 @@ class Frame(wx.Frame):
                 v.Remove(idx)
 
         self.layout()
+
+    def on_response_button(self, event):
+        button = event.GetEventObject()
+        idx = button.index
+        self.model.response[idx] = not self.model.response[idx]
+        button.SetLabel("T" if self.model.response[idx] else "F")
+
+    def on_query_field(self, event):
+        field = event.GetEventObject()
+        idx = field.index
+        self.model.queries[idx] = field.GetValue()
+
+    def on_shift_field(self, event):
+        field = event.GetEventObject()
+        idx = field.index
+        self.model.shift_vector[idx] = field.GetValue()
 
     def layout(self):
         self.main_panel.Layout()
