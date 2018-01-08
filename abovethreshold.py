@@ -22,6 +22,14 @@ class Model(object):
     shift = [1] * n
 
 
+class StaticBox(wx.StaticBox):
+    def SetSizer(self, sizer):
+        super(wx.StaticBox, self).SetSizer(sizer)
+        # the label's height is always included in the total size, so compensate
+        _, label_height = self.GetSize()
+        self.SetSize(sizer.GetMinSize() + (0, label_height))
+
+
 class LineGraph(FigCanvas):
     def __init__(self, parent, drawfunc, lower=0, upper=100, step=1):
         self.parent = parent
@@ -121,8 +129,8 @@ class Frame(wx.Frame):
         lower = wx.BoxSizer(wx.HORIZONTAL)
         left = wx.BoxSizer(wx.VERTICAL)
 
-        # left.Add(self.parameter_control)
-        left.Add(self.stats)
+        left.Add(self.parameter_control, flag=wx.BOTTOM | wx.EXPAND, border=10)
+        left.Add(self.stats, flag=wx.BOTTOM | wx.EXPAND, border=10)
         # left.Add(self.accuracy_control)
 
         lower.Add(left, flag=wx.RIGHT | wx.LEFT, border=10)
@@ -178,8 +186,6 @@ class Frame(wx.Frame):
     def create_vector_control(self, parent):
         vector_control = wx.Panel(parent)
 
-        sizer = wx.FlexGridSizer(rows=3, cols=4, gap=(5, 5))
-        sizer.AddGrowableCol(2)
         head_size = (80, -1)
         element_size = (30, -1)
 
@@ -217,6 +223,8 @@ class Frame(wx.Frame):
         plus = wx.Button(vector_control, label="+", size=element_size)
         minus = wx.Button(vector_control, label="-", size=element_size)
 
+        sizer = wx.FlexGridSizer(rows=3, cols=4, gap=(5, 5))
+        sizer.AddGrowableCol(2)
         sizer.Add(response_label, flag=wx.EXPAND)
         sizer.Add(response_button)
         sizer.Add(response_vector, flag=wx.EXPAND)
@@ -238,32 +246,51 @@ class Frame(wx.Frame):
         return vector_control
 
     def create_parameter_control(self, parent):
-        parameter_control = wx.Panel(parent)
+        parameter_control = StaticBox(parent, label="Algorithm parameters")
 
-        threshold_label = wx.StaticText(parameter_control, label="T")
+        spinctrl_size = (60, -1)
+        threshold_label = wx.StaticText(
+            parameter_control, label="T", style=wx.ALIGN_RIGHT)
         self.threshold = wx.SpinCtrl(
             parameter_control,
-            style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=(60, -1),
+            style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=spinctrl_size,
             min=0, max=1000, initial=100)
 
-        epsilon1_label = wx.StaticText(parameter_control, label="ε₁ (¹⁄₁₀₀₀)")
-        self.epsilon1 = fs.FloatSpin(self.panel, agwStyle=fs.FS_RIGHT,
-            min_val=0.001, max_val=1, value=0.1, digits=3)
+        epsilon1_label = wx.StaticText(
+            parameter_control, label="ε₁ (¹⁄₁₀₀₀)", style=wx.ALIGN_RIGHT)
+        self.epsilon1 = fs.FloatSpin(parameter_control, agwStyle=fs.FS_RIGHT,
+            min_val=0.001, max_val=1, value=0.1, digits=3, size=spinctrl_size)
 
-        epsilon2_label = wx.StaticText(parameter_control, label="ε₂ (¹⁄₁₀₀₀)")
-        self.epsilon2 = fs.FloatSpin(self.panel, agwStyle=fs.FS_RIGHT,
-            min_val=0.001, max_val=1, value=0.1, digits=3)
+        epsilon2_label = wx.StaticText(
+            parameter_control, label="ε₂ (¹⁄₁₀₀₀)", style=wx.ALIGN_RIGHT)
+        self.epsilon2 = fs.FloatSpin(parameter_control, agwStyle=fs.FS_RIGHT,
+            min_val=0.001, max_val=1, value=0.1, digits=3, size=spinctrl_size)
 
-        sensitivity_label = wx.StaticText(parameter_control, label="Δf")
+        sensitivity_label = wx.StaticText(
+            parameter_control, label="Δf", style=wx.ALIGN_RIGHT)
         self.sensitivity = wx.SpinCtrl(
             parameter_control,
-            style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=(60, -1),
+            style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=spinctrl_size,
             min=0, max=100, initial=1)
 
-        monotonic_label = wx.StaticText(parameter_control, label="Monotonic")
+        monotonic_label = wx.StaticText(
+            parameter_control, label="Monotonic", style=wx.ALIGN_RIGHT)
         self.monotonic = wx.CheckBox(parameter_control)
         self.monotonic.SetValue(True)
 
+        sizer = wx.FlexGridSizer(rows=5, cols=2, gap=(5, 5))
+        sizer.AddGrowableCol(1)
+        grid = [
+            threshold_label, self.threshold,
+            epsilon1_label, self.epsilon1,
+            epsilon2_label, self.epsilon2,
+            sensitivity_label, self.sensitivity,
+            monotonic_label, self.monotonic,
+        ]
+        for i in grid:
+            sizer.Add(i, flag=wx.EXPAND)
+
+        parameter_control.SetSizer(sizer)
         return parameter_control
 
     def create_accuracy_control(self, parent):
@@ -282,20 +309,19 @@ class Frame(wx.Frame):
         box.Add(accuracy.sizer, proportion=0, flag=wx.EXPAND)
 
         graphs.SetSizer(box)
-
         return graphs
 
     def create_stats(self, parent):
-        stats = wx.Panel(parent)
+        stats = StaticBox(parent, label="Vector properties")
 
         vector_label = wx.StaticText(
-            stats, label="ℙ(Response):", style=wx.ALIGN_RIGHT)
+            stats, label="ℙ(Response)", style=wx.ALIGN_RIGHT)
         error_label = wx.StaticText(
-            stats, label="ℙ(Error):", style=wx.ALIGN_RIGHT)
+            stats, label="ℙ(Error)", style=wx.ALIGN_RIGHT)
         alpha_min_label = wx.StaticText(
-            stats, label="αₘᵢₙ:", style=wx.ALIGN_RIGHT)
+            stats, label="αₘᵢₙ", style=wx.ALIGN_RIGHT)
         beta_label = wx.StaticText(
-            stats, label="β(αₘᵢₙ):", style=wx.ALIGN_RIGHT)
+            stats, label="β(αₘᵢₙ)", style=wx.ALIGN_RIGHT)
 
         vector = wx.StaticText(stats, label="0")
         error = wx.StaticText(stats, label="0")
@@ -303,11 +329,14 @@ class Frame(wx.Frame):
         beta = wx.StaticText(stats, label="0")
 
         sizer = wx.FlexGridSizer(rows=4, cols=2, gap=(5, 5))
-        sizer.AddMany([
+        grid = [
             vector_label, vector,
             error_label, error,
             alpha_min_label, alpha_min,
-            beta_label, beta])
+            beta_label, beta,
+        ]
+        for i in grid:
+            sizer.Add(i, flag=wx.EXPAND)
 
         stats.SetSizer(sizer)
         return stats
