@@ -198,44 +198,44 @@ class Frame(wx.Frame):
         return controls
 
     def create_vector_control(self, parent):
-        vector_control = wx.Panel(parent)
+        panel = wx.Panel(parent)
 
         head_size = (80, -1)
         element_size = (30, -1)
 
         response_label = wx.StaticText(
-            vector_control, label="Response", style=wx.ALIGN_RIGHT)
-        response_button = wx.Button(vector_control, label="Random", size=head_size)
+            panel, label="Response", style=wx.ALIGN_RIGHT)
+        response_button = wx.Button(panel, label="Random", size=head_size)
         response_vector = wx.BoxSizer(wx.HORIZONTAL)
         for i in self.model.response:
             response_vector.Add(wx.Button(
-                vector_control, label=("T" if i else "F"),
+                panel, label=("T" if i else "F"),
                 size=element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
 
         queries_label = wx.StaticText(
-            vector_control, label="Queries", style=wx.ALIGN_RIGHT)
-        queries_random = wx.Button(vector_control, label="Random", size=head_size)
+            panel, label="Queries", style=wx.ALIGN_RIGHT)
+        queries_random = wx.Button(panel, label="Random", size=head_size)
         queries_vector = wx.BoxSizer(wx.HORIZONTAL)
         for i in self.model.queries:
             queries_vector.Add(IntCtrl(
-                vector_control, value=i, min=0,
+                panel, value=i, min=0,
                 style=wx.TE_PROCESS_ENTER | wx.TE_RIGHT,
                 size=element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
 
         shift_label = wx.StaticText(
-            vector_control, label="Shift", style=wx.ALIGN_RIGHT)
+            panel, label="Shift", style=wx.ALIGN_RIGHT)
         shift_control = wx.SpinCtrl(
-            vector_control, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT,
+            panel, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT,
             min=0, max=1000, initial=1, size=head_size)
         shift_vector = wx.BoxSizer(wx.HORIZONTAL)
         for i in self.model.shift:
             shift_vector.Add(IntCtrl(
-                vector_control, value=i, min=0,
+                panel, value=i, min=0,
                 style=wx.TE_PROCESS_ENTER | wx.TE_RIGHT,
                 size=element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
 
-        plus = wx.Button(vector_control, label="+", size=element_size)
-        minus = wx.Button(vector_control, label="-", size=element_size)
+        plus = wx.Button(panel, label="+", size=element_size)
+        minus = wx.Button(panel, label="-", size=element_size)
 
         sizer = wx.FlexGridSizer(rows=3, cols=4, gap=(5, 5))
         sizer.AddGrowableCol(2)
@@ -255,9 +255,9 @@ class Frame(wx.Frame):
         sizer.Add(shift_control)
         sizer.Add(shift_vector, flag=wx.EXPAND)
 
-        vector_control.SetSizer(sizer)
-        sizer.Fit(vector_control)
-        return vector_control
+        panel.SetSizer(sizer)
+        sizer.Fit(panel)
+        return panel
 
     def create_parameter_control(self, parent):
         panel = StaticBox(parent, label="Algorithm parameters")
