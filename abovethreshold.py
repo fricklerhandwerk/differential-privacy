@@ -3,6 +3,7 @@ import pprint
 import random
 import wx
 import wx.lib.agw.floatspin as fs
+from wx.lib.intctrl import IntCtrl
 
 import matplotlib
 matplotlib.use('WXAgg')
@@ -13,6 +14,12 @@ from math import log
 
 from algorithms import *
 
+
+class Model(object):
+    n = 5
+    response = [random.choice([True, False]) for _ in range(n)]
+    queries = [random.randint(0, 1000) for _ in range(n)]
+    shift = [1] * n
 
 class LineGraph(FigCanvas):
     def __init__(self, parent, drawfunc, lower=0, upper=100, step=1):
@@ -30,8 +37,8 @@ class LineGraph(FigCanvas):
         self.step = wx.SpinCtrl(
             parent, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=(60, -1),
             min=1, max=2048, initial=step)
-        self.sizer = self.create_sizer()
         self.plot = drawfunc
+        self.sizer = self.create_sizer()
 
     @property
     def abscissa(self):
@@ -39,7 +46,7 @@ class LineGraph(FigCanvas):
 
     def create_sizer(self):
         vbox = wx.BoxSizer(wx.VERTICAL)
-        vbox.Add(self.figure, proportion=1, flag=wx.LEFT | wx.TOP | wx.EXPAND)
+        vbox.Add(self, proportion=1, flag=wx.LEFT | wx.TOP | wx.EXPAND)
         bounds = wx.BoxSizer(wx.HORIZONTAL)
         bounds.Add(wx.StaticText(self.parent, label="Lower bound"))
         bounds.Add(self.lower)
@@ -53,7 +60,7 @@ class LineGraph(FigCanvas):
 
         for widget in (self.lower, self.upper, self.step):
             self.Bind(wx.EVT_SPINCTRL, self.plot, widget)
-            self.Bind(wx.EVT_TEXT_ENTER, on_bounds_enter, widget)
+            self.Bind(wx.EVT_TEXT_ENTER, on_spin_enter, widget)
 
         return vbox
 
@@ -61,6 +68,8 @@ class LineGraph(FigCanvas):
 class BarGraph(FigCanvas):
     def __init__(self, parent, drawfunc):
         self.parent = parent
+        self.figure = Figure()
+        super(FigCanvas, self).__init__(parent, wx.ID_ANY, self.figure)
         self.plot = drawfunc
 
 
@@ -68,16 +77,16 @@ class Frame(wx.Frame):
     title = 'Differential Privacy of the Above Threshold Mechanism'
 
     def __init__(self):
-        wx.Frame.__init__(self, None, wx.ID_ANY, self.title)
+        wx.Frame.__init__(self, None, title=self.title)
 
-        self.create_menu()
-        self.create_model()
+        self.menubar = self.create_menu()
+        self.model = self.create_model()
         self.create_view()
 
         self.draw()
 
     def create_menu(self):
-        self.menubar = wx.MenuBar()
+        menubar = wx.MenuBar()
 
         menu_file = wx.Menu()
         menu_file.AppendSeparator()
@@ -88,13 +97,15 @@ class Frame(wx.Frame):
         m_about = menu_help.Append(wx.ID_ANY, "&About\tF1", "About the demo")
         self.Bind(wx.EVT_MENU, self.on_about, m_about)
 
-        self.menubar.Append(menu_file, "&File")
-        self.menubar.Append(menu_help, "&Help")
-        self.SetMenuBar(self.menubar)
+        menubar.Append(menu_file, "&File")
+        menubar.Append(menu_help, "&Help")
+        self.SetMenuBar(menubar)
+
+        return menubar
 
     def create_model(self):
         # TODO: init input vectors
-        pass
+        return Model()
 
     def create_view(self):
         self.main_panel = wx.Panel(self)
@@ -107,16 +118,17 @@ class Frame(wx.Frame):
 
         main = wx.BoxSizer(wx.VERTICAL)
         lower = wx.BoxSizer(wx.HORIZONTAL)
-        left = wx.BoxSizer(wx.VERTICAL)
+        # left = wx.BoxSizer(wx.VERTICAL)
 
-        left.Add(self.parameter_control)
-        left.Add(self.stats)
-        left.Add(self.accuracy_control)
+        # left.Add(self.parameter_control)
+        # left.Add(self.stats)
+        # left.Add(self.accuracy_control)
 
-        lower.Add(left, proportion=1)
+        # lower.Add(left, proportion=1)
         lower.Add(self.graphs, proportion=1)
 
-        main.Add(self.vector_control, proportion=0, flag=wx.ALL, border=10)
+        main.Add(self.vector_control, flag=wx.ALL | wx.EXPAND, border=10)
+        main.Add(lower, flag=wx.EXPAND)
 
         self.main_panel.SetSizer(main)
         main.Fit(self)
@@ -163,7 +175,66 @@ class Frame(wx.Frame):
         return controls
 
     def create_vector_control(self, parent):
-        pass
+        vector_control = wx.Panel(parent)
+
+        sizer = wx.FlexGridSizer(rows=3, cols=4, gap=(5, 5))
+        sizer.AddGrowableCol(2)
+        head_size = (80, -1)
+        element_size = (30, -1)
+
+        response_label = wx.StaticText(
+            vector_control, label="Response", style=wx.ALIGN_RIGHT)
+        response_button = wx.Button(vector_control, label="Random", size=head_size)
+        response_vector = wx.BoxSizer(wx.HORIZONTAL)
+        for i in self.model.response:
+            response_vector.Add(wx.Button(
+                vector_control, label=("T" if i else "F"),
+                size=element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+
+        queries_label = wx.StaticText(
+            vector_control, label="Queries", style=wx.ALIGN_RIGHT)
+        queries_random = wx.Button(vector_control, label="Random", size=head_size)
+        queries_vector = wx.BoxSizer(wx.HORIZONTAL)
+        for i in self.model.queries:
+            queries_vector.Add(IntCtrl(
+                vector_control, value=i, min=0,
+                style=wx.TE_PROCESS_ENTER | wx.TE_RIGHT,
+                size=element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+
+        shift_label = wx.StaticText(
+            vector_control, label="Shift", style=wx.ALIGN_RIGHT)
+        shift_control = wx.SpinCtrl(
+            vector_control, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT,
+            min=0, max=1000, initial=1, size=head_size)
+        shift_vector = wx.BoxSizer(wx.HORIZONTAL)
+        for i in self.model.shift:
+            shift_vector.Add(IntCtrl(
+                vector_control, value=i, min=0,
+                style=wx.TE_PROCESS_ENTER | wx.TE_RIGHT,
+                size=element_size), flag=wx.EXPAND | wx.RIGHT, border=5)
+
+        plus = wx.Button(vector_control, label="+", size=element_size)
+        minus = wx.Button(vector_control, label="-", size=element_size)
+
+        sizer.Add(response_label, flag=wx.EXPAND)
+        sizer.Add(response_button)
+        sizer.Add(response_vector, flag=wx.EXPAND)
+        # some_button = wx.Button(vector_control, label="hans")
+        # sizer.Add(some_button, flag=wx.EXPAND)
+        sizer.Add(plus)
+
+        sizer.Add(queries_label, flag=wx.EXPAND)
+        sizer.Add(queries_random)
+        sizer.Add(queries_vector, flag=wx.EXPAND)
+        sizer.Add(minus)
+
+        sizer.Add(shift_label, flag=wx.EXPAND)
+        sizer.Add(shift_control)
+        sizer.Add(shift_vector, flag=wx.EXPAND)
+
+        vector_control.SetSizer(sizer)
+        sizer.Fit(vector_control)
+        return vector_control
 
     def create_parameter_control(self, parent):
         pass
@@ -174,13 +245,13 @@ class Frame(wx.Frame):
     def create_graphs(self, parent):
         graphs = wx.Panel(parent)
 
-        bars_original = BarGraph(self.graphs, self.draw_original)
-        bars_shifted = BarGraph(self.graphs, self.draw_shifted)
-        accuracy = Graph(self.graphs, self.draw_accuracy, lower=80, upper=120)
+        bars_original = BarGraph(graphs, self.draw_original)
+        bars_shifted = BarGraph(graphs, self.draw_shifted)
+        accuracy = LineGraph(graphs, self.draw_accuracy, lower=80, upper=120)
 
-        box = wx.BoxSizer(wx.VERTICAL, flag=wx.EXPAND)
-        box.Add(bars_original.sizer, proportion=0, flag=wx.EXPAND)
-        box.Add(bars_shifted.sizer, proportion=0, flag=wx.EXPAND)
+        box = wx.BoxSizer(wx.VERTICAL)
+        box.Add(bars_original, proportion=0, flag=wx.EXPAND)
+        box.Add(bars_shifted, proportion=0, flag=wx.EXPAND)
         box.Add(accuracy.sizer, proportion=0, flag=wx.EXPAND)
 
         graphs.SetSizer(box)
@@ -188,6 +259,15 @@ class Frame(wx.Frame):
         return graphs
 
     def create_stats(self, parent):
+        pass
+
+    def draw_original(self):
+        pass
+
+    def draw_shifted(self):
+        pass
+
+    def draw_accuracy(self):
         pass
 
     def draw(self):
