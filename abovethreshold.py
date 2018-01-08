@@ -21,6 +21,7 @@ class Model(object):
     queries = [random.randint(0, 1000) for _ in range(n)]
     shift = [1] * n
 
+
 class LineGraph(FigCanvas):
     def __init__(self, parent, drawfunc, lower=0, upper=100, step=1):
         self.parent = parent
@@ -118,13 +119,13 @@ class Frame(wx.Frame):
 
         main = wx.BoxSizer(wx.VERTICAL)
         lower = wx.BoxSizer(wx.HORIZONTAL)
-        # left = wx.BoxSizer(wx.VERTICAL)
+        left = wx.BoxSizer(wx.VERTICAL)
 
         # left.Add(self.parameter_control)
-        # left.Add(self.stats)
+        left.Add(self.stats)
         # left.Add(self.accuracy_control)
 
-        # lower.Add(left, proportion=1)
+        lower.Add(left, flag=wx.RIGHT | wx.LEFT, border=10)
         lower.Add(self.graphs, proportion=1)
 
         main.Add(self.vector_control, flag=wx.ALL | wx.EXPAND, border=10)
@@ -259,7 +260,31 @@ class Frame(wx.Frame):
         return graphs
 
     def create_stats(self, parent):
-        pass
+        stats = wx.Panel(parent)
+
+        vector_label = wx.StaticText(
+            stats, label="ℙ(response):", style=wx.ALIGN_RIGHT)
+        error_label = wx.StaticText(
+            stats, label="ℙ(error):", style=wx.ALIGN_RIGHT)
+        alpha_min_label = wx.StaticText(
+            stats, label="min. α:", style=wx.ALIGN_RIGHT)
+        beta_label = wx.StaticText(
+            stats, label="max. β:", style=wx.ALIGN_RIGHT)
+
+        vector = wx.StaticText(stats, label="0")
+        error = wx.StaticText(stats, label="0")
+        alpha_min = wx.StaticText(stats, label="0")
+        beta = wx.StaticText(stats, label="0")
+
+        sizer = wx.FlexGridSizer(rows=4, cols=2, gap=(5, 5))
+        sizer.AddMany([
+            vector_label, vector,
+            error_label, error,
+            alpha_min_label, alpha_min,
+            beta_label, beta])
+
+        stats.SetSizer(sizer)
+        return stats
 
     def draw_original(self):
         pass
