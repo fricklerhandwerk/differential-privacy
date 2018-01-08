@@ -18,8 +18,9 @@ class LineGraph(FigCanvas):
     def __init__(self, parent, drawfunc, lower=0, upper=100, step=1):
         self.parent = parent
         self.figure = Figure()
-        super(FigCanvas, self).__init__(parent, wx.ID_ANY, self.figure)
         self.axes = self.figure.add_subplot(1, 1, 1)
+        super(FigCanvas, self).__init__(parent, wx.ID_ANY, self.figure)
+
         self.lower = wx.SpinCtrl(
             parent, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=(60, -1),
             min=-1000, max=1000, initial=lower)
@@ -28,7 +29,7 @@ class LineGraph(FigCanvas):
             min=-1000, max=1000, initial=upper)
         self.step = wx.SpinCtrl(
             parent, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=(60, -1),
-            min=0, max=2048, initial=step)
+            min=1, max=2048, initial=step)
         self.sizer = self.create_sizer()
         self.plot = drawfunc
 
@@ -38,20 +39,20 @@ class LineGraph(FigCanvas):
 
     def create_sizer(self):
         vbox = wx.BoxSizer(wx.VERTICAL)
-        vbox.Add(fig, proportion=1, flag=wx.LEFT | wx.TOP | wx.EXPAND)
+        vbox.Add(self.figure, proportion=1, flag=wx.LEFT | wx.TOP | wx.EXPAND)
         bounds = wx.BoxSizer(wx.HORIZONTAL)
         bounds.Add(wx.StaticText(self.parent, label="Lower bound"))
-        bounds.Add(fig.lower)
+        bounds.Add(self.lower)
         bounds.AddStretchSpacer()
         bounds.Add(wx.StaticText(self.parent, label="Step"))
-        bounds.Add(fig.step)
+        bounds.Add(self.step)
         bounds.AddStretchSpacer()
         bounds.Add(wx.StaticText(self.parent, label="Upper bound"))
-        bounds.Add(fig.upper)
+        bounds.Add(self.upper)
         vbox.Add(bounds, proportion=0, flag=wx.ALL | wx.EXPAND, border=10)
 
-        for widget in (fig.lower, fig.upper, fig.step):
-            self.Bind(wx.EVT_SPINCTRL, fig.plot, widget)
+        for widget in (self.lower, self.upper, self.step):
+            self.Bind(wx.EVT_SPINCTRL, self.plot, widget)
             self.Bind(wx.EVT_TEXT_ENTER, on_bounds_enter, widget)
 
         return vbox
@@ -67,7 +68,7 @@ class Frame(wx.Frame):
     title = 'Differential Privacy of the Above Threshold Mechanism'
 
     def __init__(self):
-        wx.Frame.__init__(self, None, -1, self.title)
+        wx.Frame.__init__(self, None, wx.ID_ANY, self.title)
 
         self.create_menu()
         self.create_model()
@@ -108,12 +109,14 @@ class Frame(wx.Frame):
         lower = wx.BoxSizer(wx.HORIZONTAL)
         left = wx.BoxSizer(wx.VERTICAL)
 
-        main.Add(self.vector_control, proportion=0, flag=wx.ALL, border=10)
-        lower.Add(left)
-        lower.Add(self.graphs, proportion=1)
         left.Add(self.parameter_control)
         left.Add(self.stats)
         left.Add(self.accuracy_control)
+
+        lower.Add(left, proportion=1)
+        lower.Add(self.graphs, proportion=1)
+
+        main.Add(self.vector_control, proportion=0, flag=wx.ALL, border=10)
 
         self.main_panel.SetSizer(main)
         main.Fit(self)
