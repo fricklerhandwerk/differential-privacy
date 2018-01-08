@@ -131,7 +131,7 @@ class Frame(wx.Frame):
 
         left.Add(self.parameter_control, flag=wx.BOTTOM | wx.EXPAND, border=10)
         left.Add(self.stats, flag=wx.BOTTOM | wx.EXPAND, border=10)
-        # left.Add(self.accuracy_control)
+        left.Add(self.accuracy_control, flag=wx.BOTTOM | wx.EXPAND, border=10)
 
         lower.Add(left, flag=wx.RIGHT | wx.LEFT, border=10)
         lower.Add(self.graphs, proportion=1)
@@ -246,36 +246,36 @@ class Frame(wx.Frame):
         return vector_control
 
     def create_parameter_control(self, parent):
-        parameter_control = StaticBox(parent, label="Algorithm parameters")
+        panel = StaticBox(parent, label="Algorithm parameters")
 
         spinctrl_size = (60, -1)
         threshold_label = wx.StaticText(
-            parameter_control, label="T", style=wx.ALIGN_RIGHT)
+            panel, label="T", style=wx.ALIGN_RIGHT)
         self.threshold = wx.SpinCtrl(
-            parameter_control,
+            panel,
             style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=spinctrl_size,
             min=0, max=1000, initial=100)
 
         epsilon1_label = wx.StaticText(
-            parameter_control, label="ε₁ (¹⁄₁₀₀₀)", style=wx.ALIGN_RIGHT)
-        self.epsilon1 = fs.FloatSpin(parameter_control, agwStyle=fs.FS_RIGHT,
+            panel, label="ε₁ (¹⁄₁₀₀₀)", style=wx.ALIGN_RIGHT)
+        self.epsilon1 = fs.FloatSpin(panel, agwStyle=fs.FS_RIGHT,
             min_val=0.001, max_val=1, value=0.1, digits=3, size=spinctrl_size)
 
         epsilon2_label = wx.StaticText(
-            parameter_control, label="ε₂ (¹⁄₁₀₀₀)", style=wx.ALIGN_RIGHT)
-        self.epsilon2 = fs.FloatSpin(parameter_control, agwStyle=fs.FS_RIGHT,
+            panel, label="ε₂ (¹⁄₁₀₀₀)", style=wx.ALIGN_RIGHT)
+        self.epsilon2 = fs.FloatSpin(panel, agwStyle=fs.FS_RIGHT,
             min_val=0.001, max_val=1, value=0.1, digits=3, size=spinctrl_size)
 
         sensitivity_label = wx.StaticText(
-            parameter_control, label="Δf", style=wx.ALIGN_RIGHT)
+            panel, label="Δf", style=wx.ALIGN_RIGHT)
         self.sensitivity = wx.SpinCtrl(
-            parameter_control,
+            panel,
             style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=spinctrl_size,
             min=0, max=100, initial=1)
 
         monotonic_label = wx.StaticText(
-            parameter_control, label="Monotonic", style=wx.ALIGN_RIGHT)
-        self.monotonic = wx.CheckBox(parameter_control)
+            panel, label="Monotonic", style=wx.ALIGN_RIGHT)
+        self.monotonic = wx.CheckBox(panel)
         self.monotonic.SetValue(True)
 
         sizer = wx.FlexGridSizer(rows=5, cols=2, gap=(5, 5))
@@ -290,11 +290,34 @@ class Frame(wx.Frame):
         for i in grid:
             sizer.Add(i, flag=wx.EXPAND)
 
-        parameter_control.SetSizer(sizer)
-        return parameter_control
+        panel.SetSizer(sizer)
+        return panel
 
     def create_accuracy_control(self, parent):
-        pass
+        panel = StaticBox(parent, label="Compute accuracy")
+        spinctrl_size = (60, -1)
+
+        alpha_label = wx.StaticText(
+            panel, label="α", style=wx.ALIGN_RIGHT)
+        beta_label = wx.StaticText(
+            panel, label="β", style=wx.ALIGN_RIGHT)
+
+        self.alpha = wx.SpinCtrl(
+            panel,
+            style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=spinctrl_size,
+            min=0, max=1000, initial=10)
+        beta = wx.StaticText(panel, label="0")
+
+        sizer = wx.FlexGridSizer(rows=2, cols=2, gap=(5, 5))
+        grid = [
+            alpha_label, self.alpha,
+            beta_label, beta,
+        ]
+        for i in grid:
+            sizer.Add(i, flag=wx.EXPAND)
+
+        panel.SetSizer(sizer)
+        return panel
 
     def create_graphs(self, parent):
         graphs = wx.Panel(parent)
@@ -312,21 +335,21 @@ class Frame(wx.Frame):
         return graphs
 
     def create_stats(self, parent):
-        stats = StaticBox(parent, label="Vector properties")
+        panel = StaticBox(parent, label="Vector properties")
 
         vector_label = wx.StaticText(
-            stats, label="ℙ(Response)", style=wx.ALIGN_RIGHT)
+            panel, label="ℙ(Response)", style=wx.ALIGN_RIGHT)
         error_label = wx.StaticText(
-            stats, label="ℙ(Error)", style=wx.ALIGN_RIGHT)
+            panel, label="ℙ(Error)", style=wx.ALIGN_RIGHT)
         alpha_min_label = wx.StaticText(
-            stats, label="αₘᵢₙ", style=wx.ALIGN_RIGHT)
+            panel, label="αₘᵢₙ", style=wx.ALIGN_RIGHT)
         beta_label = wx.StaticText(
-            stats, label="β(αₘᵢₙ)", style=wx.ALIGN_RIGHT)
+            panel, label="β(αₘᵢₙ)", style=wx.ALIGN_RIGHT)
 
-        vector = wx.StaticText(stats, label="0")
-        error = wx.StaticText(stats, label="0")
-        alpha_min = wx.StaticText(stats, label="0")
-        beta = wx.StaticText(stats, label="0")
+        vector = wx.StaticText(panel, label="0")
+        error = wx.StaticText(panel, label="0")
+        alpha_min = wx.StaticText(panel, label="0")
+        beta = wx.StaticText(panel, label="0")
 
         sizer = wx.FlexGridSizer(rows=4, cols=2, gap=(5, 5))
         grid = [
@@ -338,8 +361,8 @@ class Frame(wx.Frame):
         for i in grid:
             sizer.Add(i, flag=wx.EXPAND)
 
-        stats.SetSizer(sizer)
-        return stats
+        panel.SetSizer(sizer)
+        return panel
 
     def draw_original(self):
         pass
