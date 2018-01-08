@@ -27,7 +27,7 @@ class StaticBox(wx.StaticBox):
         super(wx.StaticBox, self).SetSizer(sizer)
         # the label's height is always included in the total size, so compensate
         _, label_height = self.GetSize()
-        self.SetSize(sizer.GetMinSize() + (0, label_height))
+        self.SetMinSize(sizer.GetMinSize() + (0, label_height))
 
 
 class LineGraph(FigCanvas):
@@ -140,6 +140,20 @@ class Frame(wx.Frame):
         main.Add(lower, flag=wx.EXPAND)
 
         self.main_panel.SetSizer(main)
+
+        # set the first column of independent boxes to the same width
+        # and accomodate the panel if it got wider in the process
+        left_panels = [self.parameter_control, self.stats, self.accuracy_control]
+        label_width = max(i.Sizer.GetChildren()[0].Size[0] for i in left_panels)
+        for panel in left_panels:
+            sizer = panel.Sizer
+            sizer.SetItemMinSize(0, label_width, -1)
+            min_size = sizer.GetMinSize()
+            sizer.SetMinSize(min_size)
+            sizer.Layout()
+            min_width, _ = min_size
+        left.SetMinSize((min_width, -1))
+
         main.Fit(self)
 
     def create_control(self):
