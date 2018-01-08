@@ -1,28 +1,22 @@
 import os
-import pprint
-import random
 import wx
 import wx.lib.agw.floatspin as fs
 
-# The recommended way to use wx with mpl is with the WXAgg
-# backend.
-#
 import matplotlib
 matplotlib.use('WXAgg')
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigCanvas
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_wxagg import \
-    FigureCanvasWxAgg as FigCanvas, \
-    NavigationToolbar2WxAgg as NavigationToolbar
 
 from math import log
 
 from algorithms import *
 
+
 class Graph(FigCanvas):
     def __init__(self, parent, drawfunc, lower=0, upper=100, steps=256):
         self.figure = Figure()
         super(FigCanvas, self).__init__(parent, -1, self.figure)
-        self.axes = self.figure.add_subplot(1,1,1)
+        self.axes = self.figure.add_subplot(1, 1, 1)
         self.lower = wx.SpinCtrl(
             parent, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=(60, -1),
             min=-1000, max=1000, initial=lower)
@@ -40,8 +34,6 @@ class Graph(FigCanvas):
 
 
 class BarsFrame(wx.Frame):
-    """ The main frame of the application
-    """
     title = 'Differential Privacy of the Laplace mechanism'
 
     def __init__(self):
@@ -103,7 +95,6 @@ class BarsFrame(wx.Frame):
         self.panel.SetSizer(hbox)
         hbox.Fit(self)
 
-
     def create_figure(self, fig):
         vbox = wx.BoxSizer(wx.VERTICAL)
         vbox.Add(fig, 1, wx.LEFT | wx.TOP | wx.EXPAND)
@@ -132,18 +123,16 @@ class BarsFrame(wx.Frame):
             self.panel, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT,
             min=-1000, max=1000, initial=100)
 
-        self.label_epsilon = wx.StaticText(self.panel, -1,
-            "Epsilon (1/1000)")
-        self.slider_epsilon = wx.Slider(self.panel, -1,
-            minValue=1, maxValue=1000, value=100,
+        self.label_epsilon = wx.StaticText(self.panel, "Epsilon (1/1000)")
+        self.slider_epsilon = wx.Slider(
+            self.panel, minValue=1, maxValue=1000, value=100,
             style=wx.SL_AUTOTICKS | wx.SL_LABELS)
         self.slider_epsilon.SetTickFreq(1)
-        self.label_interval = wx.StaticText(self.panel, -1,
-            "Divergence interval")
-        self.slider_interval = fs.FloatSpin(self.panel, -1,
-            min_val=0.01, max_val=1000, value=10, digits=2,
-            agwStyle=fs.FS_RIGHT)
-        self.a_greater_b = wx.StaticText(self.panel, -1, "")
+        self.label_interval = wx.StaticText(self.panel, "Divergence interval")
+        self.slider_interval = fs.FloatSpin(
+            self.panel, min_val=0.01, max_val=1000, value=10,
+            digits=2, agwStyle=fs.FS_RIGHT)
+        self.a_greater_b = wx.StaticText(self.panel)
         self.calculate_a_greater_b()
 
         self.Bind(wx.EVT_COMMAND_SCROLL_THUMBTRACK, self.on_parameter_change, self.slider_epsilon)
@@ -154,7 +143,7 @@ class BarsFrame(wx.Frame):
 
         controls = wx.BoxSizer(wx.VERTICAL)
         flags = wx.EXPAND | wx.TOP | wx.BOTTOM
-        controls.Add(wx.StaticText(self.panel, -1, "Query A"))
+        controls.Add(wx.StaticText(self.panel, label="Query A"))
         controls.Add(self.query_a, 0, border=3, flag=flags)
         controls.Add(wx.StaticText(self.panel, -1, "Query B"))
         controls.Add(self.query_b, 0, border=3, flag=flags)
@@ -223,7 +212,7 @@ class BarsFrame(wx.Frame):
             try:
                 one = log(first/second)
                 two = log((1-first)/(1-second))
-                result = max(abs(one),abs(two))
+                result = max(abs(one), abs(two))
             except (ZeroDivisionError, ValueError):
                 result = None
             return result
@@ -307,4 +296,3 @@ if __name__ == '__main__':
     app.frame = BarsFrame()
     app.frame.Show()
     app.MainLoop()
-
