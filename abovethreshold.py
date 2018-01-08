@@ -238,7 +238,33 @@ class Frame(wx.Frame):
         return vector_control
 
     def create_parameter_control(self, parent):
-        pass
+        parameter_control = wx.Panel(parent)
+
+        threshold_label = wx.StaticText(parameter_control, label="T")
+        self.threshold = wx.SpinCtrl(
+            parameter_control,
+            style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=(60, -1),
+            min=0, max=1000, initial=100)
+
+        epsilon1_label = wx.StaticText(parameter_control, label="ε₁ (¹⁄₁₀₀₀)")
+        self.epsilon1 = fs.FloatSpin(self.panel, agwStyle=fs.FS_RIGHT,
+            min_val=0.001, max_val=1, value=0.1, digits=3)
+
+        epsilon2_label = wx.StaticText(parameter_control, label="ε₂ (¹⁄₁₀₀₀)")
+        self.epsilon2 = fs.FloatSpin(self.panel, agwStyle=fs.FS_RIGHT,
+            min_val=0.001, max_val=1, value=0.1, digits=3)
+
+        sensitivity_label = wx.StaticText(parameter_control, label="Δf")
+        self.sensitivity = wx.SpinCtrl(
+            parameter_control,
+            style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=(60, -1),
+            min=0, max=100, initial=1)
+
+        monotonic_label = wx.StaticText(parameter_control, label="Monotonic")
+        self.monotonic = wx.CheckBox(parameter_control)
+        self.monotonic.SetValue(True)
+
+        return parameter_control
 
     def create_accuracy_control(self, parent):
         pass
