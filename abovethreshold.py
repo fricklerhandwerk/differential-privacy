@@ -263,13 +263,13 @@ class Frame(wx.Frame):
         stats = wx.Panel(parent)
 
         vector_label = wx.StaticText(
-            stats, label="ℙ(response):", style=wx.ALIGN_RIGHT)
+            stats, label="ℙ(Response):", style=wx.ALIGN_RIGHT)
         error_label = wx.StaticText(
-            stats, label="ℙ(error):", style=wx.ALIGN_RIGHT)
+            stats, label="ℙ(Error):", style=wx.ALIGN_RIGHT)
         alpha_min_label = wx.StaticText(
-            stats, label="min. α:", style=wx.ALIGN_RIGHT)
+            stats, label="αₘᵢₙ:", style=wx.ALIGN_RIGHT)
         beta_label = wx.StaticText(
-            stats, label="max. β:", style=wx.ALIGN_RIGHT)
+            stats, label="β(αₘᵢₙ):", style=wx.ALIGN_RIGHT)
 
         vector = wx.StaticText(stats, label="0")
         error = wx.StaticText(stats, label="0")
