@@ -123,12 +123,12 @@ class BarsFrame(wx.Frame):
             self.panel, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT,
             min=-1000, max=1000, initial=100)
 
-        self.label_epsilon = wx.StaticText(self.panel, "Epsilon (1/1000)")
+        self.label_epsilon = wx.StaticText(self.panel, label="Epsilon (1/1000)")
         self.slider_epsilon = wx.Slider(
             self.panel, minValue=1, maxValue=1000, value=100,
             style=wx.SL_AUTOTICKS | wx.SL_LABELS)
         self.slider_epsilon.SetTickFreq(1)
-        self.label_interval = wx.StaticText(self.panel, "Divergence interval")
+        self.label_interval = wx.StaticText(self.panel, label="Divergence interval")
         self.slider_interval = fs.FloatSpin(
             self.panel, min_val=0.01, max_val=1000, value=10,
             digits=2, agwStyle=fs.FS_RIGHT)
