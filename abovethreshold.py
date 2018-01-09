@@ -11,6 +11,7 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigCanvas
 from matplotlib.figure import Figure
 
 from math import log
+from numpy import product
 
 from algorithms import *
 
@@ -50,21 +51,11 @@ class Model(object):
     def new_shift_vector(self):
         return [self.shift] * self.length
 
-    def set_response(self, i, value):
-        self.response[i] = value
-        self.update()
-
-    def set_query(self, i, value):
-        self.queries[i] = value
-        self.update()
-
     def set_random_response(self):
         self.response = self.random_response()
-        self.update()
 
     def set_random_queries(self):
         self.queries = self.random_queries()
-        self.update()
 
     def set_shift_vector(self, value):
         self.shift = value
@@ -80,14 +71,12 @@ class Model(object):
         self.response.append(self.randbool())
         self.queries.append(self.randint())
         self.shift_vector.append(self.shift)
-        self.update()
 
     def pop(self):
         if self.length > 1:
             self.response.pop()
             self.queries.pop()
             self.shift_vector.pop()
-            self.update()
             return True
         else:
             return False
@@ -105,7 +94,24 @@ class Model(object):
         assert len(self.shift_vector) == self.length
 
     def get_pr_vector(self):
-        return self.pr_vector
+        pr_response = self.pr_vector_threshold(self.response, self.queries)
+        threshold = Laplace(1/self.epsilon1, mean=self.threshold).state
+        return threshold >= pr_response
+
+    def pr_query_result(self, response, query, threshold):
+        """Pr(query => response | threshold)"""
+        pr_below = Laplace(1/self.epsilon2, mean=query).cdf(threshold)
+        is_above = int(response)
+        if is_above:
+            return 1 - pr_below
+        else:
+            return pr_below
+
+    def pr_vector_threshold(self, rs, qs):
+        """Pr(qs => rs | threshold)"""
+        def pred(x):
+            return product([self.pr_query_result(r, q, x) for (r,q) in zip(rs, qs)])
+        return Predicate(pred, R)
 
     def get_pr_error(self):
         return self.pr_error
@@ -198,7 +204,7 @@ class Frame(wx.Frame):
         wx.Frame.__init__(self, None, title=self.title)
 
         self.menubar = self.create_menu()
-        self.model = Model(100, 0.2, 0.1)
+        self.model = Model(100, e1=0.2, e2=0.1)
         self.create_view()
 
         self.draw()
@@ -324,20 +330,20 @@ class Frame(wx.Frame):
         self.threshold = wx.SpinCtrl(
             panel,
             style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=self.spinctrl_size,
-            min=0, max=1000, initial=100)
+            min=0, max=1000, initial=self.model.threshold)
 
         epsilon1_label = wx.StaticText(
             panel, label="ε₁ (¹⁄₁₀₀₀)", style=wx.ALIGN_RIGHT)
         self.epsilon1 = fs.FloatSpin(
             panel, agwStyle=fs.FS_RIGHT,
-            min_val=0.001, max_val=1, value=0.1,
+            min_val=0.001, max_val=1, value=self.model.epsilon1,
             increment=0.01, digits=3, size=self.spinctrl_size)
 
         epsilon2_label = wx.StaticText(
             panel, label="ε₂ (¹⁄₁₀₀₀)", style=wx.ALIGN_RIGHT)
         self.epsilon2 = fs.FloatSpin(
             panel, agwStyle=fs.FS_RIGHT,
-            min_val=0.001, max_val=1, value=0.1,
+            min_val=0.001, max_val=1, value=self.model.epsilon2,
             increment=0.01, digits=3, size=self.spinctrl_size)
 
         sensitivity_label = wx.StaticText(
@@ -345,12 +351,12 @@ class Frame(wx.Frame):
         self.sensitivity = wx.SpinCtrl(
             panel,
             style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=self.spinctrl_size,
-            min=0, max=100, initial=1)
+            min=0, max=100, initial=self.model.sensitivity)
 
         monotonic_label = wx.StaticText(
             panel, label="Monotonic", style=wx.ALIGN_RIGHT)
         self.monotonic = wx.CheckBox(panel)
-        self.monotonic.SetValue(True)
+        self.monotonic.SetValue(self.model.monotonic)
 
         sizer = wx.FlexGridSizer(rows=5, cols=2, gap=(5, 5))
         sizer.AddGrowableCol(1)
@@ -365,9 +371,11 @@ class Frame(wx.Frame):
             sizer.Add(i, flag=wx.EXPAND)
 
         self.Bind(wx.EVT_SPINCTRL, self.on_threshold, self.threshold)
+        self.Bind(wx.EVT_TEXT_ENTER, on_spin_enter, self.threshold)
         self.Bind(fs.EVT_FLOATSPIN, self.on_epsilon1, self.epsilon1)
         self.Bind(fs.EVT_FLOATSPIN, self.on_epsilon2, self.epsilon2)
         self.Bind(wx.EVT_SPINCTRL, self.on_sensitivity, self.sensitivity)
+        self.Bind(wx.EVT_TEXT_ENTER, on_spin_enter, self.sensitivity)
         self.Bind(wx.EVT_CHECKBOX, self.on_monotonic, self.monotonic)
 
         panel.SetSizer(sizer)
@@ -398,7 +406,6 @@ class Frame(wx.Frame):
         field.index = self.shift_vector.GetItemCount()
         self.shift_vector.Add(field, flag=wx.EXPAND | wx.RIGHT, border=5)
         self.Bind(wx.EVT_TEXT_ENTER, self.on_shift_field, field)
-        self.Bind(wx.EVT_KILL_FOCUS, self.on_shift_field, field)
 
     def create_accuracy_control(self, parent):
         panel = StaticBox(parent, label="Compute accuracy")
@@ -453,10 +460,10 @@ class Frame(wx.Frame):
         beta_max_label = wx.StaticText(
             panel, label="β(αₘᵢₙ)", style=wx.ALIGN_RIGHT)
 
-        self.pr_vector = wx.StaticText(panel, label=str(self.model.pr_vector))
-        self.pr_error = wx.StaticText(panel, label=str(self.model.pr_error))
-        self.alpha_min = wx.StaticText(panel, label=str(self.model.alpha_min))
-        self.beta_max = wx.StaticText(panel, label=str(self.model.beta_max))
+        self.pr_vector = wx.StaticText(panel)
+        self.pr_error = wx.StaticText(panel)
+        self.alpha_min = wx.StaticText(panel)
+        self.beta_max = wx.StaticText(panel)
 
         sizer = wx.FlexGridSizer(rows=4, cols=2, gap=(5, 5))
         grid = [
@@ -472,7 +479,7 @@ class Frame(wx.Frame):
         return panel
 
     def update_stats(self):
-        self.pr_vector.SetLabel(str(self.model.pr_vector))
+        self.pr_vector.SetLabel("{:.3f}".format(self.model.pr_vector))
         self.pr_error.SetLabel(str(self.model.pr_error))
         self.alpha_min.SetLabel(str(self.model.alpha_min))
         self.beta_max.SetLabel(str(self.model.beta_max))
@@ -487,7 +494,7 @@ class Frame(wx.Frame):
         pass
 
     def draw(self):
-        pass
+        self.update_stats()
 
     def on_threshold(self, event):
         self.model.threshold = event.GetEventObject().GetValue()
@@ -550,14 +557,14 @@ class Frame(wx.Frame):
     def on_response_button(self, event):
         button = event.GetEventObject()
         idx = button.index
-        self.model.set_response(idx, not self.model.response[idx])
+        self.model.response[idx] = not self.model.response[idx]
         button.SetLabel("T" if self.model.response[idx] else "F")
         self.on_parameter_change()
 
     def on_query_field(self, event):
         field = event.GetEventObject()
         idx = field.index
-        self.model.set_query(idx, field.GetValue())
+        self.model.query[idx] = field.GetValue()
         self.on_parameter_change()
 
     def on_shift_field(self, event):
@@ -570,8 +577,8 @@ class Frame(wx.Frame):
         self.main_panel.Layout()
 
     def on_parameter_change(self):
+        self.model.update()
         self.update_stats()
-        self.draw()
         self.layout()
 
     def on_shift_change(self):
