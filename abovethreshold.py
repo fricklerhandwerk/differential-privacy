@@ -35,9 +35,17 @@ class Model(object):
         self.queries = self.random_queries()
         self.shift_vector = self.new_shift_vector()
 
+        """probability of getting `response`, given `queries` and `threshold`"""
         self.pr_vector = 0
-        self.pr_error = 0
+        """probability of getting a correct response,
+        given `queries` and `threshold`"""
+        self.pr_correct = 0
+        """probability of getting an alpha-accurate response,
+        given `queries` and `threshold`"""
+        self.pr_accurate = 0
+        """minimum alpha to get an alpha-accurate response"""
         self.alpha_min = 0
+        """probability of getting an alpha_min-inaccurate response"""
         self.beta_max = 0
 
         self.update()
@@ -84,7 +92,7 @@ class Model(object):
     def update(self):
         self.update_length()
         self.pr_vector = self.get_pr_vector()
-        self.pr_error = self.get_pr_error()
+        self.pr_correct = self.get_pr_correct()
         self.alpha_min = self.get_alpha_min()
         self.beta_max = self.get_beta_max()
 
@@ -98,7 +106,7 @@ class Model(object):
         threshold = Laplace(1/self.epsilon1, mean=self.threshold).state
         return threshold >= pr_response
 
-    def pr_query_result(self, response, query, threshold):
+    def pr_query_response(self, response, query, threshold):
         """Pr(query => response | threshold)"""
         pr_below = Laplace(1/self.epsilon2, mean=query).cdf(threshold)
         is_above = int(response)
@@ -110,11 +118,11 @@ class Model(object):
     def pr_vector_threshold(self, rs, qs):
         """Pr(qs => rs | threshold)"""
         def pred(x):
-            return product([self.pr_query_result(r, q, x) for (r,q) in zip(rs, qs)])
+            return product([self.pr_query_response(r, q, x) for (r,q) in zip(rs, qs)])
         return Predicate(pred, R)
 
-    def get_pr_error(self):
-        return self.pr_error
+    def get_pr_correct(self):
+        return self.pr_correct
 
     def get_alpha_min(self):
         alpha_min = 0
@@ -452,23 +460,23 @@ class Frame(wx.Frame):
         panel = StaticBox(parent, label="Vector properties")
 
         pr_vector_label = wx.StaticText(
-            panel, label="ℙ(Response)", style=wx.ALIGN_RIGHT)
-        pr_error_label = wx.StaticText(
-            panel, label="ℙ(Error)", style=wx.ALIGN_RIGHT)
+            panel, label="ℙ(response)", style=wx.ALIGN_RIGHT)
+        pr_correct_label = wx.StaticText(
+            panel, label="ℙ(correct)", style=wx.ALIGN_RIGHT)
         alpha_min_label = wx.StaticText(
             panel, label="αₘᵢₙ", style=wx.ALIGN_RIGHT)
         beta_max_label = wx.StaticText(
             panel, label="β(αₘᵢₙ)", style=wx.ALIGN_RIGHT)
 
         self.pr_vector = wx.StaticText(panel)
-        self.pr_error = wx.StaticText(panel)
+        self.pr_correct = wx.StaticText(panel)
         self.alpha_min = wx.StaticText(panel)
         self.beta_max = wx.StaticText(panel)
 
         sizer = wx.FlexGridSizer(rows=4, cols=2, gap=(5, 5))
         grid = [
             pr_vector_label, self.pr_vector,
-            pr_error_label, self.pr_error,
+            pr_correct_label, self.pr_correct,
             alpha_min_label, self.alpha_min,
             beta_max_label, self.beta_max,
         ]
@@ -480,7 +488,7 @@ class Frame(wx.Frame):
 
     def update_stats(self):
         self.pr_vector.SetLabel("{:.3f}".format(self.model.pr_vector))
-        self.pr_error.SetLabel(str(self.model.pr_error))
+        self.pr_correct.SetLabel(str(self.model.pr_correct))
         self.alpha_min.SetLabel(str(self.model.alpha_min))
         self.beta_max.SetLabel(str(self.model.beta_max))
 
@@ -590,17 +598,17 @@ class Frame(wx.Frame):
     def on_about(self, event):
         msg = """Dynamically parametrize the Above Threshold Algorithm
 
-        * Set a result vector
+        * Set a response vector
         * Set a query vector
         * Set a query vector for a neighboring database
         * Adjust the algorithm parameters T, e1, e2, sensitivity, count
 
         The program displays the queries' individual probabilities to produce
-        the given result vector enties, as well as the probability of the whole
-        query vector producing the given result vector.
+        the given response vector enties, as well as the probability of the whole
+        query vector producing the given response vector.
 
         Query values below threshold are highlighted, as well as incorrect
-        result vector entries.
+        response vector entries.
         """
         dlg = wx.MessageDialog(self, msg, "About", wx.OK)
         dlg.ShowModal()
