@@ -103,17 +103,15 @@ class Model(object):
 
     def get_pr_vector(self):
         pr_response = self.pr_vector_threshold(self.response, self.queries)
-        threshold = Laplace(1/self.epsilon1, mean=self.threshold).state
-        return threshold >= pr_response
+        return self.threshold_state >= pr_response
 
-    def pr_query_response(self, response, query, threshold):
-        """Pr(query => response | threshold)"""
+    def pr_query_response(self, is_above, query, threshold):
+        """Pr(query => is_above | threshold)"""
         pr_below = Laplace(1/self.epsilon2, mean=query).cdf(threshold)
-        is_above = int(response)
-        if is_above:
-            return 1 - pr_below
-        else:
+        if not is_above:
             return pr_below
+        else:
+            return 1 - pr_below
 
     def pr_vector_threshold(self, rs, qs):
         """Pr(qs => rs | threshold)"""
@@ -122,15 +120,24 @@ class Model(object):
         return Predicate(pred, R)
 
     def get_pr_correct(self):
-        return self.pr_correct
+        correct_response = [q >= self.threshold for q in self.queries]
+        pr_correct_response = self.pr_vector_threshold(correct_response, self.queries)
+        """wow, the cool thing is that the probability of getting the exactly correct vector
+        for queries *just around* the threshold is minimal"""
+        # TODO: plot this.
+        return self.threshold_state >= pr_correct_response
+
+    @property
+    def threshold_state(self):
+        return Laplace(1/self.epsilon1, mean=self.threshold).state
 
     def get_alpha_min(self):
         alpha_min = 0
         for i in range(self.length):
             positive = self.response[i]
-            above = self.threshold - alpha_min < self.queries[i]
+            above = self.threshold - alpha_min <= self.queries[i]
             negative = not self.response[i]
-            below = self.threshold + alpha_min > self.queries[i]
+            below = self.threshold + alpha_min >= self.queries[i]
             correct = (positive and above) or (negative and below)
             distance = abs(self.threshold - self.queries[i])
             if not correct and distance > alpha_min:
@@ -488,7 +495,7 @@ class Frame(wx.Frame):
 
     def update_stats(self):
         self.pr_vector.SetLabel("{:.3f}".format(self.model.pr_vector))
-        self.pr_correct.SetLabel(str(self.model.pr_correct))
+        self.pr_correct.SetLabel("{:.3f}".format(self.model.pr_correct))
         self.alpha_min.SetLabel(str(self.model.alpha_min))
         self.beta_max.SetLabel(str(self.model.beta_max))
 
@@ -572,7 +579,7 @@ class Frame(wx.Frame):
     def on_query_field(self, event):
         field = event.GetEventObject()
         idx = field.index
-        self.model.query[idx] = field.GetValue()
+        self.model.queries[idx] = field.GetValue()
         self.on_parameter_change()
 
     def on_shift_field(self, event):
