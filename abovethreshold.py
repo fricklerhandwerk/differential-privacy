@@ -20,9 +20,15 @@ class Model(object):
         self, threshold, e1, e2, sensitivity=1, monotonic=True,
             length=5, shift=1, maxint=1000):
 
-        self.maxint = maxint
-        self.shift = shift
+        self.threshold = threshold
+        self.epsilon1 = e1
+        self.epsilon2 = e2
+        self.sensitivity = sensitivity
+        self.monotonic = monotonic
+
         self.length = length
+        self.shift = shift
+        self.maxint = maxint
 
         self.random_response()
         self.random_queries()
@@ -194,35 +200,6 @@ class Frame(wx.Frame):
 
         main.Fit(self)
 
-    def create_control(self):
-        self.query_a = wx.SpinCtrl(
-            self.panel, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT,
-            min=-1000, max=1000, initial=105)
-        self.query_b = wx.SpinCtrl(
-            self.panel, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT,
-            min=-1000, max=1000, initial=100)
-
-        self.label_epsilon = wx.StaticText(self.panel, -1,
-            "Epsilon (1/1000)")
-        self.slider_epsilon = wx.Slider(self.panel, -1,
-            minValue=1, maxValue=1000, value=100,
-            style=wx.SL_AUTOTICKS | wx.SL_LABELS)
-        self.slider_epsilon.SetTickFreq(1)
-        self.label_interval = wx.StaticText(self.panel, -1,
-            "Divergence interval")
-        self.slider_interval = fs.FloatSpin(self.panel, -1,
-            min_val=0.01, max_val=1000, value=10, digits=2,
-            agwStyle=fs.FS_RIGHT)
-        self.a_greater_b = wx.StaticText(self.panel, -1, "")
-        self.calculate_a_greater_b()
-
-        self.Bind(fs.EVT_FLOATSPIN, self.on_slider_interval, self.slider_interval)
-        for widget in [self.query_a, self.query_b]:
-            self.Bind(wx.EVT_SPINCTRL, self.on_parameter_change, widget)
-            self.Bind(wx.EVT_TEXT_ENTER, on_bounds_enter, widget)
-
-        return controls
-
     def create_vector_control(self, parent):
         panel = wx.Panel(parent)
 
@@ -252,11 +229,11 @@ class Frame(wx.Frame):
         plus = wx.Button(panel, label="+", size=self.element_size)
         minus = wx.Button(panel, label="-", size=self.element_size)
 
-        self.Bind(wx.EVT_BUTTON, self.random_response, response_button)
-        self.Bind(wx.EVT_BUTTON, self.random_queries, queries_button)
-        self.Bind(wx.EVT_SPINCTRL, self.set_shift_vector, shift_control)
-        self.Bind(wx.EVT_BUTTON, self.push, plus)
-        self.Bind(wx.EVT_BUTTON, self.pop, minus)
+        self.Bind(wx.EVT_BUTTON, self.on_random_response, response_button)
+        self.Bind(wx.EVT_BUTTON, self.on_random_queries, queries_button)
+        self.Bind(wx.EVT_SPINCTRL, self.on_set_shift_vector, shift_control)
+        self.Bind(wx.EVT_BUTTON, self.on_plus, plus)
+        self.Bind(wx.EVT_BUTTON, self.on_minus, minus)
 
         sizer = wx.FlexGridSizer(rows=3, cols=4, gap=(5, 5))
         sizer.AddGrowableCol(2)
@@ -325,6 +302,12 @@ class Frame(wx.Frame):
         ]
         for i in grid:
             sizer.Add(i, flag=wx.EXPAND)
+
+        self.Bind(wx.EVT_SPINCTRL, self.on_threshold, self.threshold)
+        self.Bind(fs.EVT_FLOATSPIN, self.on_epsilon1, self.epsilon1)
+        self.Bind(fs.EVT_FLOATSPIN, self.on_epsilon2, self.epsilon2)
+        self.Bind(wx.EVT_SPINCTRL, self.on_sensitivity, self.sensitivity)
+        self.Bind(wx.EVT_CHECKBOX, self.on_monotonic, self.monotonic)
 
         panel.SetSizer(sizer)
         return panel
@@ -399,32 +382,50 @@ class Frame(wx.Frame):
     def create_stats(self, parent):
         panel = StaticBox(parent, label="Vector properties")
 
-        vector_label = wx.StaticText(
+        pr_vector_label = wx.StaticText(
             panel, label="ℙ(Response)", style=wx.ALIGN_RIGHT)
-        error_label = wx.StaticText(
+        pr_error_label = wx.StaticText(
             panel, label="ℙ(Error)", style=wx.ALIGN_RIGHT)
         alpha_min_label = wx.StaticText(
             panel, label="αₘᵢₙ", style=wx.ALIGN_RIGHT)
-        beta_label = wx.StaticText(
+        beta_max_label = wx.StaticText(
             panel, label="β(αₘᵢₙ)", style=wx.ALIGN_RIGHT)
 
-        vector = wx.StaticText(panel, label="0")
-        error = wx.StaticText(panel, label="0")
-        alpha_min = wx.StaticText(panel, label="0")
-        beta = wx.StaticText(panel, label="0")
+        self.pr_vector = wx.StaticText(panel, label="0")
+        self.pr_error = wx.StaticText(panel, label="0")
+        self.alpha_min = wx.StaticText(panel, label="0")
+        self.beta_max = wx.StaticText(panel, label="0")
 
         sizer = wx.FlexGridSizer(rows=4, cols=2, gap=(5, 5))
         grid = [
-            vector_label, vector,
-            error_label, error,
-            alpha_min_label, alpha_min,
-            beta_label, beta,
+            pr_vector_label, self.pr_vector,
+            pr_error_label, self.pr_error,
+            alpha_min_label, self.alpha_min,
+            beta_max_label, self.beta_max,
         ]
         for i in grid:
             sizer.Add(i, flag=wx.EXPAND)
 
         panel.SetSizer(sizer)
         return panel
+
+    def update_stats(self):
+        self.pr_vector.SetLabel(self.get_pr_vector())
+        self.pr_error.SetLabel(self.get_pr_error())
+        self.alpha_min.SetLabel(self.get_alpha_min())
+        self.beta_max.SetLabel(self.get_beta_max())
+
+    def get_pr_vector(self):
+        pass
+
+    def get_pr_error(self):
+        pass
+
+    def get_alpha_min(self):
+        pass
+
+    def get_beta_max(self):
+        pass
 
     def draw_original(self):
         pass
@@ -438,7 +439,27 @@ class Frame(wx.Frame):
     def draw(self):
         pass
 
-    def push(self, event):
+    def on_threshold(self, event):
+        self.model.threshold = event.GetEventObject().GetValue()
+        self.on_parameter_change()
+
+    def on_epsilon1(self, event):
+        self.model.epsilon1 = event.GetEventObject().GetValue()
+        self.on_parameter_change()
+
+    def on_epsilon2(self, event):
+        self.model.epsilon2 = event.GetEventObject().GetValue()
+        self.on_parameter_change()
+
+    def on_sensitivity(self, event):
+        self.model.sensitivity = event.GetEventObject().GetValue()
+        self.on_parameter_change()
+
+    def on_monotonic(self, event):
+        self.model.monotonic = event.GetEventObject().GetValue()
+        self.on_parameter_change()
+
+    def on_plus(self, event):
         self.model.push()
         parent = self.vector_control
         self.create_response_element(parent, self.model.response[-1])
@@ -447,57 +468,65 @@ class Frame(wx.Frame):
 
         self.create_shift_element(parent, self.model.shift_vector[-1])
 
-        self.layout()
+        self.on_parameter_change()
 
-    def pop(self, event):
+    def on_minus(self, event):
         if self.model.pop():
             for v in [self.response_vector, self.queries_vector, self.shift_vector]:
                 idx = len(v.GetChildren()) - 1
                 v.GetChildren()[idx].DeleteWindows()
                 v.Remove(idx)
 
-        self.layout()
+        self.on_parameter_change()
 
-    def random_response(self, event):
+    def on_random_response(self, event):
         self.model.random_response()
         for i, v in enumerate(self.response_vector.GetChildren()):
             v.Window.SetLabel("T" if self.model.response[i] else "F")
+        self.on_parameter_change()
 
-    def random_queries(self, event):
+    def on_random_queries(self, event):
         self.model.random_queries()
         for i, v in enumerate(self.queries_vector.GetChildren()):
             v.Window.SetValue(self.model.queries[i])
+        self.on_parameter_change()
 
-    def set_shift_vector(self, event):
+    def on_set_shift_vector(self, event):
         self.model.shift = event.GetEventObject().GetValue()
         self.model.set_shift_vector()
         for i, v in enumerate(self.shift_vector.GetChildren()):
             v.Window.SetValue(self.model.shift_vector[i])
+        self.on_shift_change()
 
     def on_response_button(self, event):
         button = event.GetEventObject()
         idx = button.index
         self.model.response[idx] = not self.model.response[idx]
         button.SetLabel("T" if self.model.response[idx] else "F")
+        self.on_parameter_change()
 
     def on_query_field(self, event):
         field = event.GetEventObject()
         idx = field.index
         self.model.queries[idx] = field.GetValue()
+        self.on_parameter_change()
 
     def on_shift_field(self, event):
         field = event.GetEventObject()
         idx = field.index
         self.model.shift_vector[idx] = field.GetValue()
+        self.on_shift_change()
 
     def layout(self):
         self.main_panel.Layout()
 
-    def on_vector_change(self, event):
-        pass
-
-    def on_parameter_change(self, event):
+    def on_parameter_change(self):
+        self.update_stats()
         self.draw()
+        self.layout()
+
+    def on_shift_change(self):
+        pass
 
     def on_exit(self, event):
         self.Destroy()
