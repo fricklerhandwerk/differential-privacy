@@ -410,22 +410,31 @@ class Frame(wx.Frame):
         return panel
 
     def update_stats(self):
-        self.pr_vector.SetLabel(self.get_pr_vector())
-        self.pr_error.SetLabel(self.get_pr_error())
-        self.alpha_min.SetLabel(self.get_alpha_min())
-        self.beta_max.SetLabel(self.get_beta_max())
+        self.pr_vector.SetLabel(str(self.get_pr_vector()))
+        self.pr_error.SetLabel(str(self.get_pr_error()))
+        self.alpha_min.SetLabel(str(self.get_alpha_min()))
+        self.beta_max.SetLabel(str(self.get_beta_max()))
 
     def get_pr_vector(self):
-        pass
+        return 1
 
     def get_pr_error(self):
-        pass
+        return 1
 
     def get_alpha_min(self):
-        pass
+        alpha_min = 0
+        for i in range(self.model.length):
+            positive = self.model.response[i]
+            above = self.model.threshold - alpha_min < self.model.queries[i]
+            negative = not self.model.response[i]
+            below = self.model.threshold + alpha_min > self.model.queries[i]
+            correct = (positive and above) or (negative and below)
+            if not correct:
+                alpha_min = abs(self.model.threshold - self.model.queries[i])
+        return alpha_min
 
     def get_beta_max(self):
-        pass
+        return 1
 
     def draw_original(self):
         pass
