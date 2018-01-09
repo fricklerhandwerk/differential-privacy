@@ -30,18 +30,45 @@ class Model(object):
         self.shift = shift
         self.maxint = maxint
 
-        self.random_response()
-        self.random_queries()
-        self.set_shift_vector()
+        self.response = self.random_response()
+        self.queries = self.random_queries()
+        self.shift_vector = self.new_shift_vector()
+
+        self.pr_vector = 0
+        self.pr_error = 0
+        self.alpha_min = 0
+        self.beta_max = 0
+
+        self.update()
 
     def random_response(self):
-        self.response = [self.randbool() for _ in range(self.length)]
+        return [self.randbool() for _ in range(self.length)]
 
     def random_queries(self):
-        self.queries = [self.randint() for _ in range(self.length)]
+        return [self.randint() for _ in range(self.length)]
 
-    def set_shift_vector(self):
-        self.shift_vector = [self.shift] * self.length
+    def new_shift_vector(self):
+        return [self.shift] * self.length
+
+    def set_response(self, i, value):
+        self.response[i] = value
+        self.update()
+
+    def set_query(self, i, value):
+        self.queries[i] = value
+        self.update()
+
+    def set_random_response(self):
+        self.response = self.random_response()
+        self.update()
+
+    def set_random_queries(self):
+        self.queries = self.random_queries()
+        self.update()
+
+    def set_shift_vector(self, value):
+        self.shift = value
+        self.shift_vector = self.new_shift_vector()
 
     def randbool(self):
         return random.choice([True, False])
@@ -53,17 +80,51 @@ class Model(object):
         self.response.append(self.randbool())
         self.queries.append(self.randint())
         self.shift_vector.append(self.shift)
-        self.length += 1
+        self.update()
 
     def pop(self):
         if self.length > 1:
             self.response.pop()
             self.queries.pop()
             self.shift_vector.pop()
-            self.length -= 1
+            self.update()
             return True
         else:
             return False
+
+    def update(self):
+        self.update_length()
+        self.pr_vector = self.get_pr_vector()
+        self.pr_error = self.get_pr_error()
+        self.alpha_min = self.get_alpha_min()
+        self.beta_max = self.get_beta_max()
+
+    def update_length(self):
+        self.length = len(self.response)
+        assert len(self.queries) == self.length
+        assert len(self.shift_vector) == self.length
+
+    def get_pr_vector(self):
+        return self.pr_vector
+
+    def get_pr_error(self):
+        return self.pr_error
+
+    def get_alpha_min(self):
+        alpha_min = 0
+        for i in range(self.length):
+            positive = self.response[i]
+            above = self.threshold - alpha_min < self.queries[i]
+            negative = not self.response[i]
+            below = self.threshold + alpha_min > self.queries[i]
+            correct = (positive and above) or (negative and below)
+            distance = abs(self.threshold - self.queries[i])
+            if not correct and distance > alpha_min:
+                alpha_min = distance
+        return alpha_min
+
+    def get_beta_max(self):
+        return self.beta_max
 
 
 class StaticBox(wx.StaticBox):
@@ -337,6 +398,7 @@ class Frame(wx.Frame):
         field.index = self.shift_vector.GetItemCount()
         self.shift_vector.Add(field, flag=wx.EXPAND | wx.RIGHT, border=5)
         self.Bind(wx.EVT_TEXT_ENTER, self.on_shift_field, field)
+        self.Bind(wx.EVT_KILL_FOCUS, self.on_shift_field, field)
 
     def create_accuracy_control(self, parent):
         panel = StaticBox(parent, label="Compute accuracy")
@@ -391,10 +453,10 @@ class Frame(wx.Frame):
         beta_max_label = wx.StaticText(
             panel, label="β(αₘᵢₙ)", style=wx.ALIGN_RIGHT)
 
-        self.pr_vector = wx.StaticText(panel, label="0")
-        self.pr_error = wx.StaticText(panel, label="0")
-        self.alpha_min = wx.StaticText(panel, label="0")
-        self.beta_max = wx.StaticText(panel, label="0")
+        self.pr_vector = wx.StaticText(panel, label=str(self.model.pr_vector))
+        self.pr_error = wx.StaticText(panel, label=str(self.model.pr_error))
+        self.alpha_min = wx.StaticText(panel, label=str(self.model.alpha_min))
+        self.beta_max = wx.StaticText(panel, label=str(self.model.beta_max))
 
         sizer = wx.FlexGridSizer(rows=4, cols=2, gap=(5, 5))
         grid = [
@@ -410,31 +472,10 @@ class Frame(wx.Frame):
         return panel
 
     def update_stats(self):
-        self.pr_vector.SetLabel(str(self.get_pr_vector()))
-        self.pr_error.SetLabel(str(self.get_pr_error()))
-        self.alpha_min.SetLabel(str(self.get_alpha_min()))
-        self.beta_max.SetLabel(str(self.get_beta_max()))
-
-    def get_pr_vector(self):
-        return 1
-
-    def get_pr_error(self):
-        return 1
-
-    def get_alpha_min(self):
-        alpha_min = 0
-        for i in range(self.model.length):
-            positive = self.model.response[i]
-            above = self.model.threshold - alpha_min < self.model.queries[i]
-            negative = not self.model.response[i]
-            below = self.model.threshold + alpha_min > self.model.queries[i]
-            correct = (positive and above) or (negative and below)
-            if not correct:
-                alpha_min = abs(self.model.threshold - self.model.queries[i])
-        return alpha_min
-
-    def get_beta_max(self):
-        return 1
+        self.pr_vector.SetLabel(str(self.model.pr_vector))
+        self.pr_error.SetLabel(str(self.model.pr_error))
+        self.alpha_min.SetLabel(str(self.model.alpha_min))
+        self.beta_max.SetLabel(str(self.model.beta_max))
 
     def draw_original(self):
         pass
@@ -472,16 +513,15 @@ class Frame(wx.Frame):
         self.model.push()
         parent = self.vector_control
         self.create_response_element(parent, self.model.response[-1])
-
         self.create_queries_element(parent, self.model.queries[-1])
-
         self.create_shift_element(parent, self.model.shift_vector[-1])
 
         self.on_parameter_change()
 
     def on_minus(self, event):
         if self.model.pop():
-            for v in [self.response_vector, self.queries_vector, self.shift_vector]:
+            vectors = [self.response_vector,self.queries_vector, self.shift_vector]
+            for v in vectors:
                 idx = len(v.GetChildren()) - 1
                 v.GetChildren()[idx].DeleteWindows()
                 v.Remove(idx)
@@ -489,20 +529,20 @@ class Frame(wx.Frame):
         self.on_parameter_change()
 
     def on_random_response(self, event):
-        self.model.random_response()
+        self.model.set_random_response()
         for i, v in enumerate(self.response_vector.GetChildren()):
             v.Window.SetLabel("T" if self.model.response[i] else "F")
         self.on_parameter_change()
 
     def on_random_queries(self, event):
-        self.model.random_queries()
+        self.model.set_random_queries()
         for i, v in enumerate(self.queries_vector.GetChildren()):
             v.Window.SetValue(self.model.queries[i])
         self.on_parameter_change()
 
     def on_set_shift_vector(self, event):
-        self.model.shift = event.GetEventObject().GetValue()
-        self.model.set_shift_vector()
+        shift = event.GetEventObject().GetValue()
+        self.model.set_shift_vector(shift)
         for i, v in enumerate(self.shift_vector.GetChildren()):
             v.Window.SetValue(self.model.shift_vector[i])
         self.on_shift_change()
@@ -510,14 +550,14 @@ class Frame(wx.Frame):
     def on_response_button(self, event):
         button = event.GetEventObject()
         idx = button.index
-        self.model.response[idx] = not self.model.response[idx]
+        self.model.set_response(idx, not self.model.response[idx])
         button.SetLabel("T" if self.model.response[idx] else "F")
         self.on_parameter_change()
 
     def on_query_field(self, event):
         field = event.GetEventObject()
         idx = field.index
-        self.model.queries[idx] = field.GetValue()
+        self.model.set_query(idx, field.GetValue())
         self.on_parameter_change()
 
     def on_shift_field(self, event):
