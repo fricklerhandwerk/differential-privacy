@@ -178,7 +178,7 @@ class BarsFrame(wx.Frame):
         ax.clear()
 
         a, b = self.get_distributions()
-        xs = self.queries.abscissa
+        xs = self.difference.abscissa
         ys = [a.difference(b)(x) for x in xs]
         ax.plot(xs, ys, color="red", linewidth=2.0, linestyle="-", label="Pr(A-B)")
         ax.legend(loc='upper right')
