@@ -22,7 +22,9 @@ A = Laplace(1/epsilon, 0)
 def f(x, y):
     B = Laplace(A.scale, A.mean + x)
     C = Laplace(B.scale, B.mean + y)
+    # differential probability of largest query being reported as maximal
     one = log(B.larger(A)/C.larger(A))
+    # also take into account what happens with the second-largest one in the differential case!
     two = log(A.larger(B)/A.larger(C))
     return max(abs(one), abs(two))
 
