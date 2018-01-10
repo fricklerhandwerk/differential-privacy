@@ -20,8 +20,8 @@ A = Laplace(1/epsilon, 0)
 
 
 def f(x, y):
-    B = Laplace(A.spread, A.mean + x)
-    C = Laplace(B.spread, B.mean + y)
+    B = Laplace(A.scale, A.mean + x)
+    C = Laplace(B.scale, B.mean + y)
     one = log(B.larger(A)/C.larger(A))
     two = log(A.larger(B)/A.larger(C))
     return max(abs(one), abs(two))

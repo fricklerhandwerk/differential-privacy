@@ -39,8 +39,8 @@ def exponential(database, utility, epsilon, sensitivity=1, monotonic=True):
 
 class Laplace(object):
     """Laplace distribution"""
-    def __init__(self, spread, mean=0):
-        self.spread = spread
+    def __init__(self, scale, mean=0):
+        self.scale = scale
         self.mean = mean
 
     def __call__(self, args):
@@ -48,17 +48,17 @@ class Laplace(object):
 
     @property
     def state(self):
-        return Lap(self.spread, self.mean)
+        return Lap(self.scale, self.mean)
 
     @property
     def cdf(self):
-        return LapCDF(self.spread, self.mean)
+        return LapCDF(self.scale, self.mean)
 
     def difference(self, other):
-        return DiffLap(self.spread, other.spread, self.mean, other.mean)
+        return DiffLap(self.scale, other.scale, self.mean, other.mean)
 
     def differenceCDF(self, other):
-        return DiffLapCDF(self.spread, other.spread, self.mean, other.mean)
+        return DiffLapCDF(self.scale, other.scale, self.mean, other.mean)
 
     def larger(self, other):
         return 1 - self.differenceCDF(other)(0)
