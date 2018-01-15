@@ -139,16 +139,11 @@ class Frame(wx.Frame):
             self.panel, minValue=1, maxValue=1000, value=10,
             style=wx.SL_AUTOTICKS | wx.SL_LABELS)
         self.slider_delta.SetTickFreq(1)
-        self.label_interval = wx.StaticText(self.panel, label="Divergence interval")
-        self.slider_interval = fs.FloatSpin(
-            self.panel, min_val=0.01, max_val=1000, value=10,
-            digits=2, agwStyle=fs.FS_RIGHT)
         self.a_greater_b = wx.StaticText(self.panel)
 
         self.Bind(wx.EVT_CHOICE, self.on_parameter_change, self.mode)
         self.Bind(wx.EVT_COMMAND_SCROLL_THUMBTRACK, self.on_parameter_change, self.slider_epsilon)
         self.Bind(wx.EVT_COMMAND_SCROLL_THUMBTRACK, self.on_parameter_change, self.slider_delta)
-        self.Bind(fs.EVT_FLOATSPIN, self.on_slider_interval, self.slider_interval)
         for widget in [self.query_a, self.query_b]:
             self.Bind(wx.EVT_SPINCTRL, self.on_parameter_change, widget)
             self.Bind(wx.EVT_TEXT_ENTER, on_bounds_enter, widget)
@@ -164,8 +159,6 @@ class Frame(wx.Frame):
         controls.Add(self.slider_epsilon, 0, border=3, flag=flags)
         controls.Add(self.label_delta, 0, flag=flags)
         controls.Add(self.slider_delta, 0, border=3, flag=flags)
-        controls.Add(self.label_interval, 0, flag=flags)
-        controls.Add(self.slider_interval, 0, border=3, flag=flags)
         controls.Add(self.a_greater_b, 0, border=5, flag=flags)
         return controls
 
@@ -223,33 +216,19 @@ class Frame(wx.Frame):
         ax.clear()
 
         a, b = self.get_distributions()
-        interval = self.slider_interval.GetValue()
 
         def divergence(x):
-            first = a.cdf(x+interval/2)-a.cdf(x-interval/2)
-            second = b.cdf(x+interval/2)-b.cdf(x-interval/2)
-            try:
-                one = log(first/second)
-                two = log((1-first)/(1-second))
-                result = max(abs(one), abs(two))
-            except (ZeroDivisionError, ValueError):
-                result = None
-            return result
-
-        def pointwise(x):
             one = log(a.pdf(x)/b.pdf(x))
             two = log((1-a.pdf(x))/(1-b.pdf(x)))
             return max(abs(one), abs(two))
 
         xs = self.divergence.abscissa
         ys = [divergence(x) for x in xs]
-        ax.plot(xs, ys, color="blue", linewidth=2.0, linestyle="-")
-        ys = [pointwise(x) for x in xs]
         ax.plot(xs, ys, color="red", linewidth=2.0, linestyle="-")
         epsilon = self.slider_epsilon.GetValue() / 1000
         ax.axhline(y=epsilon, color="green")
 
-        self.divergence.figure.suptitle("Divergence of queries on [x-{0},x+{0}]".format(interval/2))
+        self.divergence.figure.suptitle("Pointwise divergence ivergence of queries")
         self.divergence.draw()
 
     def get_distributions(self):
@@ -278,9 +257,6 @@ class Frame(wx.Frame):
 
     def on_parameter_change(self, event):
         self.draw_figure()
-
-    def on_slider_interval(self, event):
-        self.draw_divergence()
 
     def on_save_plot(self, event):
         file_choices = "PNG (*.png)|*.png"
