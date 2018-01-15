@@ -42,8 +42,7 @@ def exponential(database, utility, epsilon, sensitivity=1, monotonic=True):
     return State.fromfun(distribution, dom=list(database.keys()))
 
 
-class Laplace(object):
-    """Laplace distribution"""
+class Distribution(object):
     def __init__(self, scale, loc=0):
         self.scale = scale
         self.loc = loc
@@ -51,6 +50,9 @@ class Laplace(object):
     @property
     def state(self):
         return State.fromfun(self.pdf, R)
+
+class Laplace(Distribution):
+    """Laplace distribution"""
 
     def pdf(self, x):
         b = self.scale
@@ -104,59 +106,39 @@ class Laplace(object):
         return 1 - self.differenceCDF(other)(0)
 
 
-class Gauss(object):
+class Gauss(Distribution):
     """Gaussian distribution"""
-    def __init__(self, scale, mean=0):
-        self.scale = scale
-        self.mean = mean
 
-    def __call__(self, args):
-        return self.state(args)
+    def pdf(self, x):
+        return self.normalPDF(x, self.scale, self.loc)
 
-    @property
-    def state(self):
-        return Normal(self.scale, self.mean)
-
-    @property
     def cdf(self):
-        return NormalCDF(self.scale, self.mean)
+        return self.normalCDF(x, self.scale, self.loc)
 
     def difference(self, other):
-        return DiffNormal(self.scale, other.scale, self.mean, other.mean)
+        def diff(x):
+            b = self.scale**2 + other.scale**2
+            m = self.loc - other.loc
+            return self.normalPDF(x, b, m)
+
+        return diff
 
     def differenceCDF(self, other):
-        return DiffNormalCDF(self.scale, other.scale, self.mean, other.mean)
+        def diffCDF(x):
+            b = self.scale**2 + other.scale**2
+            m = self.loc - other.loc
+            return self.normalCDF(x, b, m)
+
+        return diffCDF
 
     def larger(self, other):
         return 1 - self.differenceCDF(other)(0)
 
-
-def Normal(b, m=0):
-    def gauss(x):
+    def normalPDF(self, x, b, m):
         return exp((-(x-m)**2)/(2*b**2))/sqrt(2*pi*b**2)
-    return State.fromfun(gauss, R)
 
-
-def NormalCDF(b, m=0):
-    def gaussCDF(x):
+    def normalCDF(self, x, b, m):
         return (1 + erf((x-m) / (b*sqrt(2)))) / 2
-    return State.fromfun(gaussCDF, R)
-
-
-def DiffNormal(a, b, m=0, n=0):
-    def difference(x):
-        u = m - n
-        s = a**2 + b**2
-        return exp((-(x-u)**2)/(2*s**2))/sqrt(2*pi * s)
-    return State.fromfun(difference, R)
-
-
-def DiffNormalCDF(a, b, m=0, n=0):
-    def differenceCDF(x):
-        u = m - n
-        s = a**2 + b**2
-        return (1 + erf((x-u) / (s*sqrt(2)))) / 2
-    return State.fromfun(differenceCDF, R)
 
 
 def sgn(x):
