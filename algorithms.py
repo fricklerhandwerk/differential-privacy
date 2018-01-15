@@ -106,13 +106,13 @@ class Laplace(Distribution):
         return 1 - self.differenceCDF(other)(0)
 
 
-class Gauss(Distribution):
+class Gaussian(Distribution):
     """Gaussian distribution"""
 
     def pdf(self, x):
         return self.normalPDF(x, self.scale, self.loc)
 
-    def cdf(self):
+    def cdf(self, x):
         return self.normalCDF(x, self.scale, self.loc)
 
     def difference(self, other):

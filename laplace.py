@@ -1,3 +1,4 @@
+from enum import Enum
 import os
 import wx
 import wx.lib.agw.floatspin as fs
@@ -11,6 +12,13 @@ from math import log
 
 from algorithms import *
 
+class Mode(Enum):
+    Laplace = Laplace
+    Gaussian = Gaussian
+
+    @classmethod
+    def names(cls):
+        return list(cls._member_map_)
 
 class Graph(FigCanvas):
     def __init__(self, parent, drawfunc, lower=0, upper=100, steps=256):
@@ -67,7 +75,7 @@ class Frame(wx.Frame):
 
         self.queries = Graph(
             self.panel, self.draw_queries,
-            lower=80, upper=120, steps=512)
+            lower=0, upper=200, steps=512)
         self.difference = Graph(
             self.panel, self.draw_difference,
             lower=-100, upper=100)
@@ -76,7 +84,7 @@ class Frame(wx.Frame):
             lower=-100, upper=100)
         self.divergence = Graph(
             self.panel, self.draw_divergence,
-            lower=80, upper=120)
+            lower=0, upper=200)
 
         self.controls = self.create_controls()
         hbox = wx.BoxSizer(wx.HORIZONTAL)
@@ -113,6 +121,7 @@ class Frame(wx.Frame):
         return vbox
 
     def create_controls(self):
+        self.mode = wx.Choice(self.panel, choices=Mode.names())
         self.query_a = wx.SpinCtrl(
             self.panel, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT,
             min=-1000, max=1000, initial=105)
@@ -125,13 +134,20 @@ class Frame(wx.Frame):
             self.panel, minValue=1, maxValue=1000, value=100,
             style=wx.SL_AUTOTICKS | wx.SL_LABELS)
         self.slider_epsilon.SetTickFreq(1)
+        self.label_delta = wx.StaticText(self.panel, label="Delta (1/1000)")
+        self.slider_delta = wx.Slider(
+            self.panel, minValue=1, maxValue=1000, value=10,
+            style=wx.SL_AUTOTICKS | wx.SL_LABELS)
+        self.slider_delta.SetTickFreq(1)
         self.label_interval = wx.StaticText(self.panel, label="Divergence interval")
         self.slider_interval = fs.FloatSpin(
             self.panel, min_val=0.01, max_val=1000, value=10,
             digits=2, agwStyle=fs.FS_RIGHT)
         self.a_greater_b = wx.StaticText(self.panel)
 
+        self.Bind(wx.EVT_CHOICE, self.on_parameter_change, self.mode)
         self.Bind(wx.EVT_COMMAND_SCROLL_THUMBTRACK, self.on_parameter_change, self.slider_epsilon)
+        self.Bind(wx.EVT_COMMAND_SCROLL_THUMBTRACK, self.on_parameter_change, self.slider_delta)
         self.Bind(fs.EVT_FLOATSPIN, self.on_slider_interval, self.slider_interval)
         for widget in [self.query_a, self.query_b]:
             self.Bind(wx.EVT_SPINCTRL, self.on_parameter_change, widget)
@@ -139,19 +155,22 @@ class Frame(wx.Frame):
 
         controls = wx.BoxSizer(wx.VERTICAL)
         flags = wx.EXPAND | wx.TOP | wx.BOTTOM
+        controls.Add(self.mode)
         controls.Add(wx.StaticText(self.panel, label="Query A"))
         controls.Add(self.query_a, 0, border=3, flag=flags)
         controls.Add(wx.StaticText(self.panel, -1, "Query B"))
         controls.Add(self.query_b, 0, border=3, flag=flags)
         controls.Add(self.label_epsilon, 0, flag=flags)
         controls.Add(self.slider_epsilon, 0, border=3, flag=flags)
+        controls.Add(self.label_delta, 0, flag=flags)
+        controls.Add(self.slider_delta, 0, border=3, flag=flags)
         controls.Add(self.label_interval, 0, flag=flags)
         controls.Add(self.slider_interval, 0, border=3, flag=flags)
         controls.Add(self.a_greater_b, 0, border=5, flag=flags)
         return controls
 
     def draw_figure(self):
-        self.update_distributions()
+        self.update_model()
         for a in [self.queries, self.difference, self.differenceCDF, self.divergence]:
             a.plot()
         self.calculate_a_greater_b()
@@ -227,6 +246,8 @@ class Frame(wx.Frame):
         ax.plot(xs, ys, color="blue", linewidth=2.0, linestyle="-")
         ys = [pointwise(x) for x in xs]
         ax.plot(xs, ys, color="red", linewidth=2.0, linestyle="-")
+        epsilon = self.slider_epsilon.GetValue() / 1000
+        ax.axhline(y=epsilon, color="green")
 
         self.divergence.figure.suptitle("Divergence of queries on [x-{0},x+{0}]".format(interval/2))
         self.divergence.draw()
@@ -234,10 +255,22 @@ class Frame(wx.Frame):
     def get_distributions(self):
         return self.a, self.b
 
-    def update_distributions(self):
+    def update_model(self):
+        mode = Mode[self.mode.GetString(self.mode.CurrentSelection)]
         epsilon = self.slider_epsilon.GetValue() / 1000
-        self.a = Laplace(1/epsilon, self.query_a.GetValue())
-        self.b = Laplace(1/epsilon, self.query_b.GetValue())
+
+        if mode == Mode.Laplace:
+            self.a = Laplace(1/epsilon, self.query_a.GetValue())
+            self.b = Laplace(1/epsilon, self.query_b.GetValue())
+            self.slider_delta.Enable(False)
+            self.label_delta.Enable(False)
+        else:
+            delta = self.slider_delta.GetValue() / 1000
+            c = sqrt(2*log(1.25/delta))
+            self.a = Gaussian(c/epsilon, self.query_a.GetValue())
+            self.b = Gaussian(c/epsilon, self.query_b.GetValue())
+            self.slider_delta.Enable(True)
+            self.label_delta.Enable(True)
 
     def calculate_a_greater_b(self):
         a, b = self.get_distributions()
