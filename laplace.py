@@ -177,7 +177,8 @@ class Frame(wx.Frame):
 
         a, b = self.get_distributions()
         xs = self.difference.abscissa
-        ys = [a.difference(b)(x) for x in xs]
+        f = a.difference(b)
+        ys = [f(x) for x in xs]
         ax.plot(xs, ys, color="red", linewidth=2.0, linestyle="-", label="Pr(A-B)")
         ax.legend(loc='upper right')
 
@@ -190,7 +191,8 @@ class Frame(wx.Frame):
 
         a, b = self.get_distributions()
         xs = self.differenceCDF.abscissa
-        ys = [a.differenceCDF(b)(x) for x in xs]
+        f = a.differenceCDF(b)
+        ys = [f(x) for x in xs]
         ax.plot(xs, ys, color="red", linewidth=2.0, linestyle="-", label="CDF Pr(A-B)")
         ax.legend(loc='upper right')
 
