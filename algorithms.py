@@ -47,12 +47,22 @@ class Laplace(object):
     def __init__(self, scale, loc=0):
         self.scale = scale
         self.loc = loc
-        self.pdf = laplace(scale=scale, loc=loc).pdf
-        self.cdf = laplace(scale=scale, loc=loc).cdf
 
     @property
     def state(self):
         return State.fromfun(self.pdf, R)
+
+    def pdf(self, x):
+        b = self.scale
+        m = self.loc
+        return exp(-abs(x-m)/b) / (2*b)
+
+    def cdf(self, x):
+        b = self.scale
+        m = self.loc
+        t = abs(x - m)
+        s = sgn(x - m)
+        return (-s * exp(-t/b) + s + 1) / 2
 
     def difference(self, other):
         """difference of two Laplace distributions"""
