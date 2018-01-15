@@ -2,7 +2,10 @@
 
 from efprob.dc import *
 from math import copysign
+from math import erf
 from math import exp
+from math import pi
+from math import sqrt
 
 
 R_plus = R(0, inf)
@@ -102,6 +105,61 @@ def DiffLapCDF(a, b, m=0, n=0):
             return (-s * (2*a+t)*k / (2*a) + 1 + s)/2
         else:
             return (-s * ((a*k + b*l)/(a+b) + (a*k - b*l)/(a-b)) / 2 + 1 + s)/2
+    return State.fromfun(differenceCDF, R)
+
+
+class Gauss(object):
+    """Gaussian distribution"""
+    def __init__(self, scale, mean=0):
+        self.scale = scale
+        self.mean = mean
+
+    def __call__(self, args):
+        return self.state(args)
+
+    @property
+    def state(self):
+        return Normal(self.scale, self.mean)
+
+    @property
+    def cdf(self):
+        return NormalCDF(self.scale, self.mean)
+
+    def difference(self, other):
+        return DiffNormal(self.scale, other.scale, self.mean, other.mean)
+
+    def differenceCDF(self, other):
+        return DiffNormalCDF(self.scale, other.scale, self.mean, other.mean)
+
+    def larger(self, other):
+        return 1 - self.differenceCDF(other)(0)
+
+
+def Normal(b, m=0):
+    def gauss(x):
+        return exp((-(x-m)**2)/(2*b**2))/sqrt(2*pi*b**2)
+    return State.fromfun(gauss, R)
+
+
+def NormalCDF(b, m=0):
+    def gaussCDF(x):
+        return (1 + erf((x-m) / (b*sqrt(2)))) / 2
+    return State.fromfun(gaussCDF, R)
+
+
+def DiffNormal(a, b, m=0, n=0):
+    def difference(x):
+        u = m - n
+        s = a**2 + b**2
+        return exp((-(x-u)**2)/(2*s**2))/sqrt(2*pi * s)
+    return State.fromfun(difference, R)
+
+
+def DiffNormalCDF(a, b, m=0, n=0):
+    def differenceCDF(x):
+        u = m - n
+        s = a**2 + b**2
+        return (1 + erf((x-u) / (s*sqrt(2)))) / 2
     return State.fromfun(differenceCDF, R)
 
 
