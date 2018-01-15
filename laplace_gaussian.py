@@ -128,6 +128,9 @@ class Frame(wx.Frame):
         self.query_b = wx.SpinCtrl(
             self.panel, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT,
             min=-1000, max=1000, initial=100)
+        self.sensitivity = wx.SpinCtrl(
+            self.panel, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT,
+            min=1, max=100, initial=1)
 
         self.label_epsilon = wx.StaticText(self.panel, label="Epsilon (1/1000)")
         self.slider_epsilon = wx.Slider(
@@ -144,7 +147,7 @@ class Frame(wx.Frame):
         self.Bind(wx.EVT_CHOICE, self.on_parameter_change, self.mode)
         self.Bind(wx.EVT_COMMAND_SCROLL_THUMBTRACK, self.on_parameter_change, self.slider_epsilon)
         self.Bind(wx.EVT_COMMAND_SCROLL_THUMBTRACK, self.on_parameter_change, self.slider_delta)
-        for widget in [self.query_a, self.query_b]:
+        for widget in [self.query_a, self.query_b, self.sensitivity]:
             self.Bind(wx.EVT_SPINCTRL, self.on_parameter_change, widget)
             self.Bind(wx.EVT_TEXT_ENTER, on_bounds_enter, widget)
 
@@ -153,8 +156,10 @@ class Frame(wx.Frame):
         controls.Add(self.mode)
         controls.Add(wx.StaticText(self.panel, label="Query A"))
         controls.Add(self.query_a, 0, border=3, flag=flags)
-        controls.Add(wx.StaticText(self.panel, -1, "Query B"))
+        controls.Add(wx.StaticText(self.panel, label="Query B"))
         controls.Add(self.query_b, 0, border=3, flag=flags)
+        controls.Add(wx.StaticText(self.panel, label="Sensitivity"))
+        controls.Add(self.sensitivity, 0, border=3, flag=flags)
         controls.Add(self.label_epsilon, 0, flag=flags)
         controls.Add(self.slider_epsilon, 0, border=3, flag=flags)
         controls.Add(self.label_delta, 0, flag=flags)
@@ -236,18 +241,19 @@ class Frame(wx.Frame):
 
     def update_model(self):
         mode = Mode[self.mode.GetString(self.mode.CurrentSelection)]
+        sensitivity = self.sensitivity.GetValue()
         epsilon = self.slider_epsilon.GetValue() / 1000
 
         if mode == Mode.Laplace:
-            self.a = Laplace(1/epsilon, self.query_a.GetValue())
-            self.b = Laplace(1/epsilon, self.query_b.GetValue())
+            self.a = Laplace(sensitivity/epsilon, self.query_a.GetValue())
+            self.b = Laplace(sensitivity/epsilon, self.query_b.GetValue())
             self.slider_delta.Enable(False)
             self.label_delta.Enable(False)
         else:
             delta = self.slider_delta.GetValue() / 1000
             c = sqrt(2*log(1.25/delta))
-            self.a = Gaussian(c/epsilon, self.query_a.GetValue())
-            self.b = Gaussian(c/epsilon, self.query_b.GetValue())
+            self.a = Gaussian(c*sensitivity/epsilon, self.query_a.GetValue())
+            self.b = Gaussian(c*sensitivity/epsilon, self.query_b.GetValue())
             self.slider_delta.Enable(True)
             self.label_delta.Enable(True)
 
