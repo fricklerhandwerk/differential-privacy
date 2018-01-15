@@ -107,7 +107,7 @@ class Model(object):
 
     def pr_query_response(self, is_above, query, threshold):
         """Pr(query => is_above | threshold)"""
-        pr_below = Laplace(1/self.epsilon2, mean=query).cdf(threshold)
+        pr_below = Laplace(1/self.epsilon2, loc=query).cdf(threshold)
         if not is_above:
             return pr_below
         else:
@@ -129,7 +129,7 @@ class Model(object):
 
     @property
     def threshold_state(self):
-        return Laplace(1/self.epsilon1, mean=self.threshold).state
+        return Laplace(1/self.epsilon1, loc=self.threshold).state
 
     def get_alpha_min(self):
         alpha_min = 0

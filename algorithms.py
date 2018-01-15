@@ -6,6 +6,8 @@ from math import erf
 from math import exp
 from math import pi
 from math import sqrt
+from scipy.stats import laplace
+from scipy.stats import norm
 
 
 R_plus = R(0, inf)
@@ -42,70 +44,54 @@ def exponential(database, utility, epsilon, sensitivity=1, monotonic=True):
 
 class Laplace(object):
     """Laplace distribution"""
-    def __init__(self, scale, mean=0):
+    def __init__(self, scale, loc=0):
         self.scale = scale
-        self.mean = mean
-
-    def __call__(self, args):
-        return self.state(args)
+        self.loc = loc
+        self.pdf = laplace(scale=scale, loc=loc).pdf
+        self.cdf = laplace(scale=scale, loc=loc).cdf
 
     @property
     def state(self):
-        return Lap(self.scale, self.mean)
-
-    @property
-    def cdf(self):
-        return LapCDF(self.scale, self.mean)
+        return State.fromfun(self.pdf, R)
 
     def difference(self, other):
-        return DiffLap(self.scale, other.scale, self.mean, other.mean)
+        """difference of two Laplace distributions"""
+        a = self.scale
+        b = other.scale
+        m = self.loc
+        n = other.loc
+
+        def diff(x):
+            t = abs(x+n-m)
+            k = exp(-t/a)
+            l = exp(-t/b)
+            if a == b:
+                return (k + t/a*k) / (4*a)
+            else:
+                return ((k+l)/(a+b) + (k-l)/(a-b)) / 4
+
+        return diff
 
     def differenceCDF(self, other):
-        return DiffLapCDF(self.scale, other.scale, self.mean, other.mean)
+        a = self.scale
+        b = other.scale
+        m = self.loc
+        n = other.loc
+
+        def diffCDF(x):
+            t = abs(x+n-m)
+            s = sgn(x+n-m)
+            k = exp(-t/a)
+            l = exp(-t/b)
+            if a == b:
+                return (-s * (2*a+t)*k / (2*a) + 1 + s)/2
+            else:
+                return (-s * ((a*k + b*l)/(a+b) + (a*k - b*l)/(a-b)) / 2 + 1 + s)/2
+
+        return diffCDF
 
     def larger(self, other):
         return 1 - self.differenceCDF(other)(0)
-
-
-def Lap(b, m=0):
-    def laplace(x):
-        return exp(-abs(x-m)/b) / (2*b)
-    return State.fromfun(laplace, R)
-
-
-def LapCDF(b, m=0):
-    def laplaceCDF(x):
-        t = abs(x - m)
-        s = sgn(x-m)
-        return (-s * exp(-t/b) + s + 1) / 2
-    return State.fromfun(laplaceCDF, R)
-
-
-def DiffLap(a, b, m=0, n=0):
-    """difference of two Laplace distributions"""
-    def difference(x):
-        t = abs(x+n-m)
-        k = exp(-t/a)
-        l = exp(-t/b)
-        if a == b:
-            return (k + t/a*k) / (4*a)
-        else:
-            return ((k+l)/(a+b) + (k-l)/(a-b)) / 4
-    return State.fromfun(difference, R)
-
-
-def DiffLapCDF(a, b, m=0, n=0):
-    """CDF of difference of two Laplace distributions"""
-    def differenceCDF(x):
-        t = abs(x+n-m)
-        s = sgn(x+n-m)
-        k = exp(-t/a)
-        l = exp(-t/b)
-        if a == b:
-            return (-s * (2*a+t)*k / (2*a) + 1 + s)/2
-        else:
-            return (-s * ((a*k + b*l)/(a+b) + (a*k - b*l)/(a-b)) / 2 + 1 + s)/2
-    return State.fromfun(differenceCDF, R)
 
 
 class Gauss(object):

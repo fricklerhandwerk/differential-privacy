@@ -33,7 +33,7 @@ class Graph(FigCanvas):
         return np.linspace(self.lower.GetValue(), self.upper.GetValue(), self.steps.GetValue())
 
 
-class BarsFrame(wx.Frame):
+class Frame(wx.Frame):
     title = 'Differential Privacy of the Laplace mechanism'
 
     def __init__(self):
@@ -78,9 +78,6 @@ class BarsFrame(wx.Frame):
             self.panel, self.draw_divergence,
             lower=80, upper=120)
 
-        #
-        # Layout with box sizers
-        #
         self.controls = self.create_controls()
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         hbox.Add(self.controls, 0, wx.ALL, border=10)
@@ -133,7 +130,6 @@ class BarsFrame(wx.Frame):
             self.panel, min_val=0.01, max_val=1000, value=10,
             digits=2, agwStyle=fs.FS_RIGHT)
         self.a_greater_b = wx.StaticText(self.panel)
-        self.calculate_a_greater_b()
 
         self.Bind(wx.EVT_COMMAND_SCROLL_THUMBTRACK, self.on_parameter_change, self.slider_epsilon)
         self.Bind(fs.EVT_FLOATSPIN, self.on_slider_interval, self.slider_interval)
@@ -155,8 +151,10 @@ class BarsFrame(wx.Frame):
         return controls
 
     def draw_figure(self):
+        self.update_distributions()
         for a in [self.queries, self.difference, self.differenceCDF, self.divergence]:
             a.plot()
+        self.calculate_a_greater_b()
 
     def draw_queries(self, event=None):
         ax = self.queries.axes
@@ -164,9 +162,9 @@ class BarsFrame(wx.Frame):
 
         a, b = self.get_distributions()
         xs = self.queries.abscissa
-        ys = [a(x) for x in xs]
+        ys = [a.pdf(x) for x in xs]
         ax.plot(xs, ys, color="blue", linewidth=2.0, linestyle="-", label="Pr(A)")
-        ys = [b(x) for x in xs]
+        ys = [b.pdf(x) for x in xs]
         ax.plot(xs, ys, color="green", linewidth=2.0, linestyle="-", label="Pr(B)")
         ax.legend(loc='upper right')
 
@@ -218,8 +216,8 @@ class BarsFrame(wx.Frame):
             return result
 
         def pointwise(x):
-            one = log(a(x)/b(x))
-            two = log((1-a(x))/(1-b(x)))
+            one = log(a.pdf(x)/b.pdf(x))
+            two = log((1-a.pdf(x))/(1-b.pdf(x)))
             return max(abs(one), abs(two))
 
         xs = self.divergence.abscissa
@@ -232,10 +230,12 @@ class BarsFrame(wx.Frame):
         self.divergence.draw()
 
     def get_distributions(self):
+        return self.a, self.b
+
+    def update_distributions(self):
         epsilon = self.slider_epsilon.GetValue() / 1000
-        a = Laplace(1/epsilon, self.query_a.GetValue())
-        b = Laplace(1/epsilon, self.query_b.GetValue())
-        return a, b
+        self.a = Laplace(1/epsilon, self.query_a.GetValue())
+        self.b = Laplace(1/epsilon, self.query_b.GetValue())
 
     def calculate_a_greater_b(self):
         a, b = self.get_distributions()
@@ -243,7 +243,6 @@ class BarsFrame(wx.Frame):
 
     def on_parameter_change(self, event):
         self.draw_figure()
-        self.calculate_a_greater_b()
 
     def on_slider_interval(self, event):
         self.draw_divergence()
@@ -293,6 +292,6 @@ def on_bounds_enter(event):
 
 if __name__ == '__main__':
     app = wx.App()
-    app.frame = BarsFrame()
+    app.frame = Frame()
     app.frame.Show()
     app.MainLoop()
