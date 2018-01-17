@@ -49,7 +49,7 @@ def queries(x):
 def queries_improved(x):
     """precise probability that any of k queries is >= x"""
     def f(l):
-        return (-1)**l * exp(-l*x*e2/2)
+        return (-1)**l * exp(-l*(x/2)*e2/2)
     result = -fsum(comb(k, l) * f(l) for l in range(1, k+1))
     return min(1, result)
 
