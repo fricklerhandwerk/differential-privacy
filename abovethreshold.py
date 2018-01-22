@@ -40,6 +40,8 @@ class Model(object):
         self.pr_response = 0
         """probability of getting `response`, given `queries` + `shift_vector` and `threshold"""
         self.pr_shifted = 0
+        """differential probability of original and shifted query vector"""
+        self.pr_diff = 0
         """probability of getting a correct response,
         given `queries` and `threshold`"""
         self.pr_correct = 0
@@ -98,6 +100,7 @@ class Model(object):
         self.update_length()
         self.pr_response = self.get_probability(self.response, self.queries)
         self.pr_shifted = self.get_probability(self.response, self.shifted_queries)
+        self.pr_diff = abs(log(self.pr_response/self.pr_shifted))
         self.pr_correct = self.get_probability(self.correct_response, self.queries)
         self.alpha_min = self.get_alpha_min()
         self.beta_max = self.get_beta_max()
@@ -145,7 +148,8 @@ class Model(object):
 
     def query_dist(self, value):
         factor = 1 if self.monotonic else 2
-        return Laplace(factor*self.sensitivity/self.epsilon2, loc=value)
+        c = len([x for x in self.response if x])
+        return Laplace((factor*c*self.sensitivity)/self.epsilon2, loc=value)
 
     def get_alpha_min(self):
         alpha_min = 0
@@ -400,14 +404,14 @@ class Frame(wx.Frame):
             min=0, max=1000, initial=self.model.threshold)
 
         epsilon1_label = wx.StaticText(
-            panel, label="ε₁ (¹⁄₁₀₀₀)", style=wx.ALIGN_RIGHT)
+            panel, label="ε₁", style=wx.ALIGN_RIGHT)
         self.epsilon1 = fs.FloatSpin(
             panel, agwStyle=fs.FS_RIGHT,
             min_val=0.001, max_val=1, value=self.model.epsilon1,
             increment=0.01, digits=3, size=self.spinctrl_size)
 
         epsilon2_label = wx.StaticText(
-            panel, label="ε₂ (¹⁄₁₀₀₀)", style=wx.ALIGN_RIGHT)
+            panel, label="ε₂", style=wx.ALIGN_RIGHT)
         self.epsilon2 = fs.FloatSpin(
             panel, agwStyle=fs.FS_RIGHT,
             min_val=0.001, max_val=1, value=self.model.epsilon2,
@@ -522,6 +526,8 @@ class Frame(wx.Frame):
             panel, label="ℙ(response)", style=wx.ALIGN_RIGHT)
         pr_shifted_label = wx.StaticText(
             panel, label="ℙ(response')", style=wx.ALIGN_RIGHT)
+        pr_diff_label = wx.StaticText(
+            panel, label="𝔻ℙ", style=wx.ALIGN_RIGHT)
         pr_correct_label = wx.StaticText(
             panel, label="ℙ(correct)", style=wx.ALIGN_RIGHT)
         alpha_min_label = wx.StaticText(
@@ -531,6 +537,7 @@ class Frame(wx.Frame):
 
         self.pr_response = wx.StaticText(panel)
         self.pr_shifted = wx.StaticText(panel)
+        self.pr_diff = wx.StaticText(panel)
         self.pr_correct = wx.StaticText(panel)
         self.alpha_min = wx.StaticText(panel)
         self.beta_max = wx.StaticText(panel)
@@ -538,6 +545,7 @@ class Frame(wx.Frame):
         grid = [
             [pr_response_label, self.pr_response],
             [pr_shifted_label, self.pr_shifted],
+            [pr_diff_label, self.pr_diff],
             [pr_correct_label, self.pr_correct],
             [alpha_min_label, self.alpha_min],
             [beta_max_label, self.beta_max],
@@ -553,6 +561,7 @@ class Frame(wx.Frame):
     def update_stats(self):
         self.pr_response.SetLabel("{:.3f}".format(self.model.pr_response))
         self.pr_shifted.SetLabel("{:.3f}".format(self.model.pr_shifted))
+        self.pr_diff.SetLabel("{:.3f}".format(self.model.pr_diff))
         self.pr_correct.SetLabel("{:.3f}".format(self.model.pr_correct))
         self.alpha_min.SetLabel(str(self.model.alpha_min))
         self.beta_max.SetLabel(str(self.model.beta_max))
