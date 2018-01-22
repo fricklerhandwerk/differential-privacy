@@ -9,6 +9,7 @@ import matplotlib
 matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigCanvas
 from matplotlib.figure import Figure
+from matplotlib.ticker import MaxNLocator
 
 from math import log
 from numpy import product
@@ -36,7 +37,7 @@ class Model(object):
         self.shift_vector = self.new_shift_vector()
 
         """probability of getting `response`, given `queries` and `threshold`"""
-        self.pr_vector = 0
+        self.pr_response = 0
         """probability of getting a correct response,
         given `queries` and `threshold`"""
         self.pr_correct = 0
@@ -47,6 +48,8 @@ class Model(object):
         self.alpha_min = 0
         """probability of getting an alpha_min-inaccurate response"""
         self.beta_max = 0
+        """probabilities of each response item with respect to queries and threshold"""
+        self.pr_items = []
 
         self.update()
 
@@ -91,41 +94,41 @@ class Model(object):
 
     def update(self):
         self.update_length()
-        self.pr_vector = self.get_pr_vector()
+        self.pr_response = self.get_pr_response()
         self.pr_correct = self.get_pr_correct()
         self.alpha_min = self.get_alpha_min()
         self.beta_max = self.get_beta_max()
+        self.pr_items = self.get_pr_items()
 
     def update_length(self):
         self.length = len(self.response)
         assert len(self.queries) == self.length
         assert len(self.shift_vector) == self.length
 
-    def get_pr_vector(self):
-        pr_response = self.pr_vector_threshold(self.response, self.queries)
-        return self.threshold_state >= pr_response
+    def get_pr_response(self):
+        vector_pred = self.response_predicate(self.response, self.queries)
+        return self.threshold_state >= vector_pred
 
-    def pr_query_response(self, is_above, query, threshold):
-        """Pr(query => is_above | threshold)"""
-        pr_below = Laplace(1/self.epsilon2, loc=query).cdf(threshold)
-        if not is_above:
-            return pr_below
-        else:
-            return 1 - pr_below
-
-    def pr_vector_threshold(self, rs, qs):
-        """Pr(qs => rs | threshold)"""
+    def response_predicate(self, rs, qs):
+        """Pr(qs => rs | threshold_state)"""
         def pred(x):
-            return product([self.pr_query_response(r, q, x) for (r,q) in zip(rs, qs)])
+            return product([self.pr_single_response(r, q, x) for (r, q) in zip(rs, qs)])
         return Predicate(pred, R)
+
+    def pr_single_response(self, is_above, query, threshold):
+        """Pr(query => is_above | threshold_value )"""
+        pr_above = 1 - Laplace(1/self.epsilon2, loc=query).cdf(threshold)
+        if is_above:
+            return pr_above
+        else:
+            return 1 - pr_above
 
     def get_pr_correct(self):
         correct_response = [q >= self.threshold for q in self.queries]
-        pr_correct_response = self.pr_vector_threshold(correct_response, self.queries)
+        vector_pred = self.response_predicate(correct_response, self.queries)
         """wow, the cool thing is that the probability of getting the exactly correct vector
         for queries *just around* the threshold is minimal"""
-        # TODO: plot this.
-        return self.threshold_state >= pr_correct_response
+        return self.threshold_state >= vector_pred
 
     @property
     def threshold_state(self):
@@ -147,6 +150,18 @@ class Model(object):
     def get_beta_max(self):
         return self.beta_max
 
+    def get_pr_items(self):
+        items = zip(self.response, self.queries)
+        return [self.pr_single_item(r, q) for (r, q) in items]
+
+    def pr_single_item(self, is_above, query):
+        threshold = Laplace(1/self.epsilon1, loc=self.threshold)
+        pr_above = Laplace(1/self.epsilon2, loc=query).larger(threshold)
+        if is_above:
+            return pr_above
+        else:
+            return 1 - pr_above
+
 
 class StaticBox(wx.StaticBox):
     def SetSizer(self, sizer):
@@ -164,13 +179,13 @@ class LineGraph(FigCanvas):
         super(FigCanvas, self).__init__(parent, wx.ID_ANY, self.figure)
 
         self.lower = wx.SpinCtrl(
-            parent, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=(60, -1),
+            self, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=(60, -1),
             min=-1000, max=1000, initial=lower)
         self.upper = wx.SpinCtrl(
-            parent, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=(60, -1),
+            self, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=(60, -1),
             min=-1000, max=1000, initial=upper)
         self.step = wx.SpinCtrl(
-            parent, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=(60, -1),
+            self, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=(60, -1),
             min=1, max=2048, initial=step)
         self.plot = drawfunc
         self.sizer = self.create_sizer()
@@ -183,13 +198,13 @@ class LineGraph(FigCanvas):
         vbox = wx.BoxSizer(wx.VERTICAL)
         vbox.Add(self, proportion=1, flag=wx.LEFT | wx.TOP | wx.EXPAND)
         bounds = wx.BoxSizer(wx.HORIZONTAL)
-        bounds.Add(wx.StaticText(self.parent, label="Lower bound"))
+        bounds.Add(wx.StaticText(self, label="Lower bound"))
         bounds.Add(self.lower)
         bounds.AddStretchSpacer()
-        bounds.Add(wx.StaticText(self.parent, label="Step"))
+        bounds.Add(wx.StaticText(self, label="Step"))
         bounds.Add(self.step)
         bounds.AddStretchSpacer()
-        bounds.Add(wx.StaticText(self.parent, label="Upper bound"))
+        bounds.Add(wx.StaticText(self, label="Upper bound"))
         bounds.Add(self.upper)
         vbox.Add(bounds, proportion=0, flag=wx.ALL | wx.EXPAND, border=10)
 
@@ -199,14 +214,34 @@ class LineGraph(FigCanvas):
 
         return vbox
 
-
 class BarGraph(FigCanvas):
-    def __init__(self, parent, drawfunc):
+    def __init__(self, parent, model):
         self.parent = parent
         self.figure = Figure()
+        self.axes = self.figure.add_subplot(1, 1, 1)
         super(FigCanvas, self).__init__(parent, wx.ID_ANY, self.figure)
-        self.plot = drawfunc
+        self.model = model
 
+        def plot(self):
+            raise NotImplementedError
+
+
+class ProbabilitiesOriginal(BarGraph):
+    def plot(self):
+        ax = self.axes
+        ax.clear()
+
+        xs = np.arange(self.model.length)
+        ys = []
+        for r, q in zip(self.model.response, self.model.queries):
+            ys.append(self.model.threshold_state >= self.model.response_predicate([r], [q]))
+
+        ax.bar(xs, ys, width=0.4, label="CDF Pr(A-B)")
+        ax.legend(loc='upper right')
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+
+        self.figure.suptitle("CDF of difference between queries")
+        self.draw()
 
 class Frame(wx.Frame):
     title = 'Differential Privacy of the Above Threshold Mechanism'
@@ -219,7 +254,7 @@ class Frame(wx.Frame):
         wx.Frame.__init__(self, None, title=self.title)
 
         self.menubar = self.create_menu()
-        self.model = Model(100, e1=0.2, e2=0.1)
+        self.model = Model(100, e1=0.1, e2=0.2)
         self.create_view()
 
         self.draw()
@@ -451,14 +486,14 @@ class Frame(wx.Frame):
     def create_graphs(self, parent):
         graphs = wx.Panel(parent)
 
-        bars_original = BarGraph(graphs, self.draw_original)
-        bars_shifted = BarGraph(graphs, self.draw_shifted)
-        accuracy = LineGraph(graphs, self.draw_accuracy, lower=80, upper=120)
+        bars_original = ProbabilitiesOriginal(graphs, self.model)
+        # bars_shifted = BarGraph(graphs, self.model)
+        # accuracy = LineGraph(graphs, self.draw_accuracy, lower=80, upper=120)
 
         box = wx.BoxSizer(wx.VERTICAL)
         box.Add(bars_original, proportion=0, flag=wx.EXPAND)
-        box.Add(bars_shifted, proportion=0, flag=wx.EXPAND)
-        box.Add(accuracy.sizer, proportion=0, flag=wx.EXPAND)
+        # box.Add(bars_shifted, proportion=0, flag=wx.EXPAND)
+        # box.Add(accuracy.sizer, proportion=0, flag=wx.EXPAND)
 
         graphs.SetSizer(box)
         return graphs
@@ -466,7 +501,7 @@ class Frame(wx.Frame):
     def create_stats(self, parent):
         panel = StaticBox(parent, label="Vector properties")
 
-        pr_vector_label = wx.StaticText(
+        pr_response_label = wx.StaticText(
             panel, label="ℙ(response)", style=wx.ALIGN_RIGHT)
         pr_correct_label = wx.StaticText(
             panel, label="ℙ(correct)", style=wx.ALIGN_RIGHT)
@@ -475,14 +510,14 @@ class Frame(wx.Frame):
         beta_max_label = wx.StaticText(
             panel, label="β(αₘᵢₙ)", style=wx.ALIGN_RIGHT)
 
-        self.pr_vector = wx.StaticText(panel)
+        self.pr_response = wx.StaticText(panel)
         self.pr_correct = wx.StaticText(panel)
         self.alpha_min = wx.StaticText(panel)
         self.beta_max = wx.StaticText(panel)
 
         sizer = wx.FlexGridSizer(rows=4, cols=2, gap=(5, 5))
         grid = [
-            pr_vector_label, self.pr_vector,
+            pr_response_label, self.pr_response,
             pr_correct_label, self.pr_correct,
             alpha_min_label, self.alpha_min,
             beta_max_label, self.beta_max,
@@ -494,15 +529,12 @@ class Frame(wx.Frame):
         return panel
 
     def update_stats(self):
-        self.pr_vector.SetLabel("{:.3f}".format(self.model.pr_vector))
+        self.pr_response.SetLabel("{:.3f}".format(self.model.pr_response))
         self.pr_correct.SetLabel("{:.3f}".format(self.model.pr_correct))
         self.alpha_min.SetLabel(str(self.model.alpha_min))
         self.beta_max.SetLabel(str(self.model.beta_max))
 
-    def draw_original(self):
-        pass
-
-    def draw_shifted(self):
+    def draw_shifted(self, fig):
         pass
 
     def draw_accuracy(self):
@@ -510,6 +542,9 @@ class Frame(wx.Frame):
 
     def draw(self):
         self.update_stats()
+        self.main_panel.Layout()
+        for g in self.graphs.Children:
+            g.plot()
 
     def on_threshold(self, event):
         self.model.threshold = event.GetEventObject().GetValue()
@@ -588,13 +623,9 @@ class Frame(wx.Frame):
         self.model.shift_vector[idx] = field.GetValue()
         self.on_shift_change()
 
-    def layout(self):
-        self.main_panel.Layout()
-
     def on_parameter_change(self):
         self.model.update()
-        self.update_stats()
-        self.layout()
+        self.draw()
 
     def on_shift_change(self):
         pass
