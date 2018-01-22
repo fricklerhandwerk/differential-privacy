@@ -4,37 +4,49 @@ from gmpy2 import exp
 from gmpy2 import fsum
 from math import log
 from math import isclose
+from numpy import nextafter
+from scipy.optimize import root
+
+from matplotlib import pyplot as plt
 
 from efprob.dc import *
 from algorithms import *
 
 gmpy2.get_context().precision = 1000
 
-
 def threshold_accuracy(b, e):
-    return 4*log(2/b)/e
+    return 2*log(2/b)/e
 
 
-def accuracy(k, b, e):
-    return 8*(log(k) + log(2/b))/e
+def queries_accuracy(k, b, e):
+    return 4*(log(k) + log(2/b))/e
 
 
-def real_accuracy(k, b, e1, e2):
-    # this is only valid for fixed ratio of e1:e2, because we have to find b1 first.
-    # b1 = (k/b2)**(-2*e1/e2)
-    assert isclose(2*e1, e2)
-    b1 = 2/110
-    b2 = 2/11
-    return -2*log(b1)/e1
+def accuracy_overestimate(b, k, e1, e2):
+    # the definition in [@privacybook, p. 60] is only valid for e1 = e2 = e/2.
+    return max(threshold_accuracy(b, e1), queries_accuracy(k, b, e2))
 
-k = 10
-b = 0.2
-e1 = 0.1
-e2 = 0.2
-e = e1 + e2
-T = 0
-a_q = accuracy(k, b, e)
-a_T = threshold_accuracy(b, e)
+
+def beta2(b, e1, e2, k):
+    def opt(x):
+        return b - x - (k/x)**(-2*e1/e2)
+    return root(opt, nextafter(b,0), tol=nextafter(0,1)).x[0]
+
+
+def beta1(b, e1, e2, k):
+    def opt(x):
+        return b - x - k*(x**(e2/(2*e1)))
+    return root(opt, nextafter(b,0), tol=nextafter(0,1)).x[0]
+
+
+def accuracy_improved(b2, e2, k):
+    return 4*log(k/b2)/e2
+
+
+def accuracy_optimal(b):
+    a1 = (log(2*e1+e2) - log(e2*b))/e1
+    a2 = (2/e2) * (log(k) + log(2*e1+e2) - log(2*e1*b))
+    return a1 + a2
 
 
 def threshold(x):
@@ -54,8 +66,15 @@ def queries_improved(x):
     return min(1, result)
 
 
+def total_overestimate(x):
+    # we have to take factor two since we assume b1 = b2 = b/2,
+    # and each noise factor accounts for only one part of the probability budget
+    return 2*max(threshold(x), queries(x))
+
+
 def total(x):
     """bound on total noise"""
+    # inverse function of accuracy_improved
     return min(1, threshold(x) + queries(x))
 
 
@@ -64,27 +83,49 @@ def total_improved(x):
     return min(1, threshold(x) + queries_improved(x))
 
 
-def accuracy_optimal(b):
-    a1 = (log(2*e1+e2) - log(e2*b))/e1
-    a2 = (2/e2) * (log(k) + log(2*e1+e2) - log(2*e1*b))
-    return a1 + a2
-
-
-def total_alpha_improved(x):
+def total_optimal(x):
     # inverse function of accuracy_optimal
     e = 2*e1+e2
     wow = (e)/(((exp(e1*e2*x)*(e2**e2))/((k/(2*e1))**(2*e1)))**(1/e))
     return min(1,wow)
 
 
-MAX = 150
-# State.fromfun(threshold, R).plot(R(0, 200))
-# State.fromfun(queries, R).plot(R(0, 200))
-# State.fromfun(queries_improved, R).plot(R(0, a_q))
-print(accuracy(k,b,e))
-print(real_accuracy(k,b,e1, e2))
-print(total(real_accuracy(k,b,e1, e2)))
+k = 10
+b = 0.2
+e1 = 0.1
+e2 = 0.1
+e = e1 + e2
+T = 0
+
+b1 = beta1(b, e1, e2, k)
+b2 = beta2(b, e1, e2, k)
+
+MAX = max(accuracy_overestimate(b, k, e1, e2), accuracy_improved(b2, e2, k), accuracy_optimal(b))
+
+print(accuracy_overestimate(b, k, e1, e2))
+print(accuracy_improved(b2, e2, k))
 print(accuracy_optimal(b))
-State.fromfun(total, R).plot(R(0, MAX))
-State.fromfun(total_alpha_improved, R).plot(R(0, MAX))
-State.fromfun(total_improved, R).plot(R(0, MAX))
+
+assert isclose(total(accuracy_improved(b2, e2, k)), b), total(accuracy_improved(b2, e2, k))
+
+fig, ax = plt.subplots()
+plt.ylim(0,1)
+plt.xlim(0,MAX)
+
+xs = np.arange(MAX)
+ax.plot(xs, [total_overestimate(x) for x in xs], color="pink", linewidth=2.0, label="overestimate")
+ax.plot(xs, [total(x) for x in xs], color="red", linewidth=2.0, label="baseline")
+ax.plot(xs, [total_improved(x) for x in xs], color="green", linewidth=2.0, label="improved")
+ax.plot(xs, [total_optimal(x) for x in xs], color="blue", linewidth=2.0, label="optimal")
+ax.legend(loc='upper right')
+plt.show(block=False)
+
+fig, ax = plt.subplots()
+plt.ylim(0,1)
+plt.xlim(0,MAX)
+ys = np.linspace(0.001,1,256)
+ax.plot([accuracy_overestimate(y, k, e1, e2) for y in ys], ys, color="pink", linewidth=2.0, label="overestimate")
+ax.plot([accuracy_improved(beta2(y, e1, e2, k), e2, k) for y in ys], ys, color="red", linewidth=2.0, label="baseline")
+ax.plot([accuracy_optimal(y) for y in ys], ys, color="blue", linewidth=2.0, label="optimal")
+ax.legend(loc='upper right')
+plt.show()
