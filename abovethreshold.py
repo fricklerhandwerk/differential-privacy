@@ -94,8 +94,8 @@ class Model(object):
 
     def update(self):
         self.update_length()
-        self.pr_response = self.get_pr_response()
-        self.pr_correct = self.get_pr_correct()
+        self.pr_response = self.get_probability(self.response, self.queries)
+        self.pr_correct = self.get_probability(self.correct_response, self.queries)
         self.alpha_min = self.get_alpha_min()
         self.beta_max = self.get_beta_max()
         self.pr_items = self.get_pr_items()
@@ -105,8 +105,8 @@ class Model(object):
         assert len(self.queries) == self.length
         assert len(self.shift_vector) == self.length
 
-    def get_pr_response(self):
-        vector_pred = self.response_predicate(self.response, self.queries)
+    def get_probability(self, response, queries):
+        vector_pred = self.response_predicate(response, queries)
         return self.threshold_state >= vector_pred
 
     def response_predicate(self, rs, qs):
@@ -123,12 +123,9 @@ class Model(object):
         else:
             return 1 - pr_above
 
-    def get_pr_correct(self):
-        correct_response = [q >= self.threshold for q in self.queries]
-        vector_pred = self.response_predicate(correct_response, self.queries)
-        """wow, the cool thing is that the probability of getting the exactly correct vector
-        for queries *just around* the threshold is minimal"""
-        return self.threshold_state >= vector_pred
+    @property
+    def correct_response(self):
+        return [q >= self.threshold for q in self.queries]
 
     @property
     def threshold_state(self):
