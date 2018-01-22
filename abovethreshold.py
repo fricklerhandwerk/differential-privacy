@@ -246,7 +246,13 @@ class ProbabilitiesOriginal(BarGraph):
         xs = np.arange(self.model.length)
         ys = self.model.pr_items
         zs = self.model.pr_shifted_items
-        ax.bar(xs, ys)
+        for x, y, z in zip(xs, ys, zs):
+            if y > z:
+                ax.bar(x, y, color="blue")
+                ax.bar(x, z, color="red")
+            else:
+                ax.bar(x, z, color="red")
+                ax.bar(x, y, color="blue")
 
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax.set_ylim(0,1)
@@ -348,7 +354,7 @@ class Frame(wx.Frame):
             panel, label="Shift", style=wx.ALIGN_RIGHT)
         shift_control = wx.SpinCtrl(
             panel, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT,
-            min=0, max=1000, initial=1, size=self.head_size)
+            min=-1000, max=1000, initial=1, size=self.head_size)
         self.shift_vector = wx.BoxSizer(wx.HORIZONTAL)
         for i in self.model.shift_vector:
             self.create_shift_element(panel, i)
@@ -461,7 +467,7 @@ class Frame(wx.Frame):
 
     def create_shift_element(self, parent, value):
         field = IntCtrl(
-            parent, value=value, min=0,
+            parent, value=value,
             style=wx.TE_PROCESS_ENTER | wx.TE_RIGHT,
             size=self.element_size)
         field.index = self.shift_vector.GetItemCount()
