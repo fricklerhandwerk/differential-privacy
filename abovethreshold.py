@@ -20,7 +20,7 @@ from algorithms import *
 class Model(object):
     def __init__(
         self, threshold, e1, e2, sensitivity=1, monotonic=True,
-            length=5, shift=1, maxint=1000):
+            length=5, shift=1):
 
         self.threshold = threshold
         self.epsilon1 = e1
@@ -30,7 +30,7 @@ class Model(object):
 
         self.length = length
         self.shift = shift
-        self.maxint = maxint
+        self.maxint = 2*threshold
 
         self.response = self.random_response()
         self.queries = self.random_queries()
@@ -38,6 +38,8 @@ class Model(object):
 
         """probability of getting `response`, given `queries` and `threshold`"""
         self.pr_response = 0
+        """probability of getting `response`, given `queries` + `shift_vector` and `threshold"""
+        self.pr_shifted = 0
         """probability of getting a correct response,
         given `queries` and `threshold`"""
         self.pr_correct = 0
@@ -95,10 +97,12 @@ class Model(object):
     def update(self):
         self.update_length()
         self.pr_response = self.get_probability(self.response, self.queries)
+        self.pr_shifted = self.get_probability(self.response, self.shifted_queries)
         self.pr_correct = self.get_probability(self.correct_response, self.queries)
         self.alpha_min = self.get_alpha_min()
         self.beta_max = self.get_beta_max()
-        self.pr_items = self.get_pr_items()
+        self.pr_items = self.get_pr_items(self.response, self.queries)
+        self.pr_shifted_items = self.get_pr_items(self.response, self.shifted_queries)
 
     def update_length(self):
         self.length = len(self.response)
@@ -117,7 +121,7 @@ class Model(object):
 
     def pr_single_response(self, is_above, query, threshold):
         """Pr(query => is_above | threshold_value )"""
-        pr_above = 1 - Laplace(1/self.epsilon2, loc=query).cdf(threshold)
+        pr_above = 1 - self.query_dist(query).cdf(threshold)
         if is_above:
             return pr_above
         else:
@@ -128,8 +132,20 @@ class Model(object):
         return [q >= self.threshold for q in self.queries]
 
     @property
+    def shifted_queries(self):
+        return [a + b for (a, b) in zip(self.queries, self.shift_vector)]
+
+    @property
     def threshold_state(self):
-        return Laplace(1/self.epsilon1, loc=self.threshold).state
+        return self.threshold_dist.state
+
+    @property
+    def threshold_dist(self):
+        return Laplace(self.sensitivity/self.epsilon1, loc=self.threshold)
+
+    def query_dist(self, value):
+        factor = 1 if self.monotonic else 2
+        return Laplace(factor*self.sensitivity/self.epsilon2, loc=value)
 
     def get_alpha_min(self):
         alpha_min = 0
@@ -147,13 +163,12 @@ class Model(object):
     def get_beta_max(self):
         return self.beta_max
 
-    def get_pr_items(self):
-        items = zip(self.response, self.queries)
+    def get_pr_items(self, response, queries):
+        items = zip(response, queries)
         return [self.pr_single_item(r, q) for (r, q) in items]
 
     def pr_single_item(self, is_above, query):
-        threshold = Laplace(1/self.epsilon1, loc=self.threshold)
-        pr_above = Laplace(1/self.epsilon2, loc=query).larger(threshold)
+        pr_above = self.query_dist(query).larger(self.threshold_dist)
         if is_above:
             return pr_above
         else:
@@ -214,7 +229,7 @@ class LineGraph(FigCanvas):
 class BarGraph(FigCanvas):
     def __init__(self, parent, model):
         self.parent = parent
-        self.figure = Figure()
+        self.figure = Figure(figsize=(5,2))
         self.axes = self.figure.add_subplot(1, 1, 1)
         super(FigCanvas, self).__init__(parent, wx.ID_ANY, self.figure)
         self.model = model
@@ -229,15 +244,13 @@ class ProbabilitiesOriginal(BarGraph):
         ax.clear()
 
         xs = np.arange(self.model.length)
-        ys = []
-        for r, q in zip(self.model.response, self.model.queries):
-            ys.append(self.model.threshold_state >= self.model.response_predicate([r], [q]))
+        ys = self.model.pr_items
+        zs = self.model.pr_shifted_items
+        ax.bar(xs, ys)
 
-        ax.bar(xs, ys, width=0.4, label="CDF Pr(A-B)")
-        ax.legend(loc='upper right')
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-
-        self.figure.suptitle("CDF of difference between queries")
+        ax.set_ylim(0,1)
+        self.figure.suptitle("Probabilities of individual responses")
         self.draw()
 
 class Frame(wx.Frame):
@@ -346,6 +359,7 @@ class Frame(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.on_random_response, response_button)
         self.Bind(wx.EVT_BUTTON, self.on_random_queries, queries_button)
         self.Bind(wx.EVT_SPINCTRL, self.on_set_shift_vector, shift_control)
+        self.Bind(wx.EVT_TEXT_ENTER, on_spin_enter, shift_control)
         self.Bind(wx.EVT_BUTTON, self.on_plus, plus)
         self.Bind(wx.EVT_BUTTON, self.on_minus, minus)
 
@@ -500,6 +514,8 @@ class Frame(wx.Frame):
 
         pr_response_label = wx.StaticText(
             panel, label="ℙ(response)", style=wx.ALIGN_RIGHT)
+        pr_shifted_label = wx.StaticText(
+            panel, label="ℙ(response')", style=wx.ALIGN_RIGHT)
         pr_correct_label = wx.StaticText(
             panel, label="ℙ(correct)", style=wx.ALIGN_RIGHT)
         alpha_min_label = wx.StaticText(
@@ -508,25 +524,29 @@ class Frame(wx.Frame):
             panel, label="β(αₘᵢₙ)", style=wx.ALIGN_RIGHT)
 
         self.pr_response = wx.StaticText(panel)
+        self.pr_shifted = wx.StaticText(panel)
         self.pr_correct = wx.StaticText(panel)
         self.alpha_min = wx.StaticText(panel)
         self.beta_max = wx.StaticText(panel)
 
-        sizer = wx.FlexGridSizer(rows=4, cols=2, gap=(5, 5))
         grid = [
-            pr_response_label, self.pr_response,
-            pr_correct_label, self.pr_correct,
-            alpha_min_label, self.alpha_min,
-            beta_max_label, self.beta_max,
+            [pr_response_label, self.pr_response],
+            [pr_shifted_label, self.pr_shifted],
+            [pr_correct_label, self.pr_correct],
+            [alpha_min_label, self.alpha_min],
+            [beta_max_label, self.beta_max],
         ]
-        for i in grid:
-            sizer.Add(i, flag=wx.EXPAND)
+        sizer = wx.FlexGridSizer(rows=len(grid), cols=len(grid[0]), gap=(5, 5))
+        for line in grid:
+            for item in line:
+                sizer.Add(item, flag=wx.EXPAND)
 
         panel.SetSizer(sizer)
         return panel
 
     def update_stats(self):
         self.pr_response.SetLabel("{:.3f}".format(self.model.pr_response))
+        self.pr_shifted.SetLabel("{:.3f}".format(self.model.pr_shifted))
         self.pr_correct.SetLabel("{:.3f}".format(self.model.pr_correct))
         self.alpha_min.SetLabel(str(self.model.alpha_min))
         self.beta_max.SetLabel(str(self.model.beta_max))
@@ -599,7 +619,7 @@ class Frame(wx.Frame):
         self.model.set_shift_vector(shift)
         for i, v in enumerate(self.shift_vector.GetChildren()):
             v.Window.SetValue(self.model.shift_vector[i])
-        self.on_shift_change()
+        self.on_parameter_change()
 
     def on_response_button(self, event):
         button = event.GetEventObject()
@@ -618,14 +638,11 @@ class Frame(wx.Frame):
         field = event.GetEventObject()
         idx = field.index
         self.model.shift_vector[idx] = field.GetValue()
-        self.on_shift_change()
+        self.on_parameter_change()
 
     def on_parameter_change(self):
         self.model.update()
         self.draw()
-
-    def on_shift_change(self):
-        pass
 
     def on_exit(self, event):
         self.Destroy()
