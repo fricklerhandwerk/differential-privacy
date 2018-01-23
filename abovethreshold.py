@@ -15,6 +15,10 @@ from math import log
 from numpy import product
 
 from algorithms import *
+from accuracy import accuracy_overestimate
+from accuracy import total_overestimate
+from accuracy import total
+from accuracy import total_optimal
 
 
 class Model(object):
@@ -40,8 +44,6 @@ class Model(object):
         self.pr_response = 0
         """probability of getting `response`, given `queries` + `shift_vector` and `threshold"""
         self.pr_shifted = 0
-        """differential probability of original and shifted query vector"""
-        self.pr_diff = 0
         """probability of getting a correct response,
         given `queries` and `threshold`"""
         self.pr_correct = 0
@@ -97,10 +99,10 @@ class Model(object):
             return False
 
     def update(self):
+        # this does long computation once
         self.update_length()
         self.pr_response = self.get_probability(self.response, self.queries)
         self.pr_shifted = self.get_probability(self.response, self.shifted_queries)
-        self.pr_diff = abs(log(self.pr_response/self.pr_shifted))
         self.pr_correct = self.get_probability(self.correct_response, self.queries)
         self.alpha_min = self.get_alpha_min()
         self.beta_max = self.get_beta_max()
@@ -131,6 +133,11 @@ class Model(object):
             return 1 - pr_above
 
     @property
+    def pr_diff(self):
+        """differential probability of original and shifted query vector"""
+        return abs(log(self.pr_response/self.pr_shifted))
+
+    @property
     def correct_response(self):
         return [q >= self.threshold for q in self.queries]
 
@@ -144,12 +151,27 @@ class Model(object):
 
     @property
     def threshold_dist(self):
-        return Laplace(self.sensitivity/self.epsilon1, loc=self.threshold)
+        return Laplace(self.threshold_scale, loc=self.threshold)
+
 
     def query_dist(self, value):
-        factor = 1 if self.monotonic else 2
-        c = len([x for x in self.response if x])
-        return Laplace((factor*c*self.sensitivity)/self.epsilon2, loc=value)
+        return Laplace(self.query_scale, loc=value)
+
+    @property
+    def threshold_scale(self):
+        return self.sensitivity/self.epsilon1
+
+    @property
+    def query_scale(self):
+        return (self.factor*self.count*self.sensitivity) / self.epsilon2
+
+    @property
+    def count(self):
+        return len([x for x in self.response if x])
+
+    @property
+    def factor(self):
+        return 1 if self.monotonic else 2
 
     def get_alpha_min(self):
         alpha_min = 0
@@ -188,11 +210,12 @@ class StaticBox(wx.StaticBox):
 
 
 class LineGraph(FigCanvas):
-    def __init__(self, parent, drawfunc, lower=0, upper=100, step=1):
+    def __init__(self, parent, model, lower=0, upper=100, step=1):
         self.parent = parent
         self.figure = Figure()
         self.axes = self.figure.add_subplot(1, 1, 1)
         super(FigCanvas, self).__init__(parent, wx.ID_ANY, self.figure)
+        self.model = model
 
         self.lower = wx.SpinCtrl(
             self, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=(60, -1),
@@ -203,8 +226,10 @@ class LineGraph(FigCanvas):
         self.step = wx.SpinCtrl(
             self, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=(60, -1),
             min=1, max=2048, initial=step)
-        self.plot = drawfunc
         self.sizer = self.create_sizer()
+
+    def plot(self):
+        raise NotImplementedError
 
     @property
     def abscissa(self):
@@ -230,6 +255,7 @@ class LineGraph(FigCanvas):
 
         return vbox
 
+
 class BarGraph(FigCanvas):
     def __init__(self, parent, model):
         self.parent = parent
@@ -238,11 +264,11 @@ class BarGraph(FigCanvas):
         super(FigCanvas, self).__init__(parent, wx.ID_ANY, self.figure)
         self.model = model
 
-        def plot(self):
-            raise NotImplementedError
+    def plot(self):
+        raise NotImplementedError
 
 
-class ProbabilitiesOriginal(BarGraph):
+class Probabilities(BarGraph):
     def plot(self):
         ax = self.axes
         ax.clear()
@@ -262,6 +288,29 @@ class ProbabilitiesOriginal(BarGraph):
         ax.set_ylim(0,1)
         self.figure.suptitle("Probabilities of individual responses")
         self.draw()
+
+
+class Accuracy(LineGraph):
+    def plot(self):
+        ax = self.axes
+        ax.clear()
+
+        k = self.model.length
+        e1 = 1/self.model.threshold_scale
+        e2 = 1/self.model.query_scale
+
+        MAX = accuracy_overestimate(0.01, k, e1, e2)
+
+        xs = np.arange(MAX)
+        ax.plot(xs, [total_overestimate(x, k, e1, e2) for x in xs], color="red", linewidth=2.0, label="overestimate")
+        ax.plot(xs, [total(x, k, e1, e2) for x in xs], color="green", linewidth=2.0, label="baseline")
+        ax.plot(xs, [total_optimal(x, k, e1, e2) for x in xs], color="blue", linewidth=2.0, label="optimal")
+        ax.legend(loc='upper right')
+        ax.set_ylim(0, 1)
+        ax.set_xlim(0, MAX)
+        self.figure.suptitle("")
+        self.draw
+
 
 class Frame(wx.Frame):
     title = 'Differential Privacy of the Above Threshold Mechanism'
@@ -507,14 +556,12 @@ class Frame(wx.Frame):
     def create_graphs(self, parent):
         graphs = wx.Panel(parent)
 
-        bars_original = ProbabilitiesOriginal(graphs, self.model)
-        # bars_shifted = BarGraph(graphs, self.model)
-        # accuracy = LineGraph(graphs, self.draw_accuracy, lower=80, upper=120)
+        bars_original = Probabilities(graphs, self.model)
+        accuracy = Accuracy(graphs, self.model, lower=80, upper=120)
 
         box = wx.BoxSizer(wx.VERTICAL)
         box.Add(bars_original, proportion=0, flag=wx.EXPAND)
-        # box.Add(bars_shifted, proportion=0, flag=wx.EXPAND)
-        # box.Add(accuracy.sizer, proportion=0, flag=wx.EXPAND)
+        box.Add(accuracy.sizer, proportion=0, flag=wx.EXPAND)
 
         graphs.SetSizer(box)
         return graphs
