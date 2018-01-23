@@ -50,10 +50,6 @@ class Model(object):
         """probability of getting an alpha-accurate response,
         given `queries` and `threshold`"""
         self.pr_accurate = 0
-        """minimum alpha to get an alpha-accurate response"""
-        self.alpha_min = 0
-        """probability of getting an alpha_min-inaccurate response"""
-        self.beta_max = 0
         """probabilities of each response item with respect to queries and threshold"""
         self.pr_items = []
 
@@ -104,8 +100,6 @@ class Model(object):
         self.pr_response = self.get_probability(self.response, self.queries)
         self.pr_shifted = self.get_probability(self.response, self.shifted_queries)
         self.pr_correct = self.get_probability(self.correct_response, self.queries)
-        self.alpha_min = self.get_alpha_min()
-        self.beta_max = self.get_beta_max()
         self.pr_items = self.get_pr_items(self.response, self.queries)
         self.pr_shifted_items = self.get_pr_items(self.response, self.shifted_queries)
 
@@ -172,22 +166,6 @@ class Model(object):
     @property
     def factor(self):
         return 1 if self.monotonic else 2
-
-    def get_alpha_min(self):
-        alpha_min = 0
-        for i in range(self.length):
-            positive = self.response[i]
-            above = self.threshold - alpha_min <= self.queries[i]
-            negative = not self.response[i]
-            below = self.threshold + alpha_min >= self.queries[i]
-            correct = (positive and above) or (negative and below)
-            distance = abs(self.threshold - self.queries[i])
-            if not correct and distance > alpha_min:
-                alpha_min = distance
-        return alpha_min
-
-    def get_beta_max(self):
-        return self.beta_max
 
     def get_pr_items(self, response, queries):
         items = zip(response, queries)
@@ -317,7 +295,7 @@ class Frame(wx.Frame):
 
     head_size = (80, -1)
     element_size = (30, -1)
-    spinctrl_size = (60, -1)
+    spinctrl_size = (80, -1)
 
     def __init__(self):
         wx.Frame.__init__(self, None, title=self.title)
@@ -351,7 +329,6 @@ class Frame(wx.Frame):
 
         self.vector_control = self.create_vector_control(self.main_panel)
         self.parameter_control = self.create_parameter_control(self.main_panel)
-        self.accuracy_control = self.create_accuracy_control(self.main_panel)
         self.graphs = self.create_graphs(self.main_panel)
         self.stats = self.create_stats(self.main_panel)
 
@@ -361,7 +338,6 @@ class Frame(wx.Frame):
 
         left.Add(self.parameter_control, flag=wx.BOTTOM | wx.EXPAND, border=10)
         left.Add(self.stats, flag=wx.BOTTOM | wx.EXPAND, border=10)
-        left.Add(self.accuracy_control, flag=wx.BOTTOM | wx.EXPAND, border=10)
 
         lower.Add(left, flag=wx.RIGHT | wx.LEFT, border=10)
         lower.Add(self.graphs, proportion=1)
@@ -373,7 +349,7 @@ class Frame(wx.Frame):
 
         # set the first column of independent boxes to the same width
         # and accomodate the panel if it got wider in the process
-        left_panels = [self.parameter_control, self.stats, self.accuracy_control]
+        left_panels = [self.parameter_control, self.stats]
         label_width = max(i.Sizer.GetChildren()[0].Size[0] for i in left_panels)
         for panel in left_panels:
             sizer = panel.Sizer
@@ -479,7 +455,6 @@ class Frame(wx.Frame):
         self.monotonic.SetValue(self.model.monotonic)
 
         sizer = wx.FlexGridSizer(rows=5, cols=2, gap=(5, 5))
-        sizer.AddGrowableCol(1)
         grid = [
             threshold_label, self.threshold,
             epsilon1_label, self.epsilon1,
@@ -527,32 +502,6 @@ class Frame(wx.Frame):
         self.shift_vector.Add(field, flag=wx.EXPAND | wx.RIGHT, border=5)
         self.Bind(wx.EVT_TEXT_ENTER, self.on_shift_field, field)
 
-    def create_accuracy_control(self, parent):
-        panel = StaticBox(parent, label="Compute accuracy")
-        spinctrl_size = (60, -1)
-
-        alpha_label = wx.StaticText(
-            panel, label="α", style=wx.ALIGN_RIGHT)
-        beta_label = wx.StaticText(
-            panel, label="β", style=wx.ALIGN_RIGHT)
-
-        self.alpha = wx.SpinCtrl(
-            panel,
-            style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=spinctrl_size,
-            min=0, max=1000, initial=10)
-        beta = wx.StaticText(panel, label="0")
-
-        sizer = wx.FlexGridSizer(rows=2, cols=2, gap=(5, 5))
-        grid = [
-            alpha_label, self.alpha,
-            beta_label, beta,
-        ]
-        for i in grid:
-            sizer.Add(i, flag=wx.EXPAND)
-
-        panel.SetSizer(sizer)
-        return panel
-
     def create_graphs(self, parent):
         graphs = wx.Panel(parent)
 
@@ -577,25 +526,17 @@ class Frame(wx.Frame):
             panel, label="𝔻ℙ", style=wx.ALIGN_RIGHT)
         pr_correct_label = wx.StaticText(
             panel, label="ℙ(correct)", style=wx.ALIGN_RIGHT)
-        alpha_min_label = wx.StaticText(
-            panel, label="αₘᵢₙ", style=wx.ALIGN_RIGHT)
-        beta_max_label = wx.StaticText(
-            panel, label="β(αₘᵢₙ)", style=wx.ALIGN_RIGHT)
 
         self.pr_response = wx.StaticText(panel)
         self.pr_shifted = wx.StaticText(panel)
         self.pr_diff = wx.StaticText(panel)
         self.pr_correct = wx.StaticText(panel)
-        self.alpha_min = wx.StaticText(panel)
-        self.beta_max = wx.StaticText(panel)
 
         grid = [
             [pr_response_label, self.pr_response],
             [pr_shifted_label, self.pr_shifted],
             [pr_diff_label, self.pr_diff],
             [pr_correct_label, self.pr_correct],
-            [alpha_min_label, self.alpha_min],
-            [beta_max_label, self.beta_max],
         ]
         sizer = wx.FlexGridSizer(rows=len(grid), cols=len(grid[0]), gap=(5, 5))
         for line in grid:
@@ -610,8 +551,6 @@ class Frame(wx.Frame):
         self.pr_shifted.SetLabel("{:.3f}".format(self.model.pr_shifted))
         self.pr_diff.SetLabel("{:.3f}".format(self.model.pr_diff))
         self.pr_correct.SetLabel("{:.3f}".format(self.model.pr_correct))
-        self.alpha_min.SetLabel(str(self.model.alpha_min))
-        self.beta_max.SetLabel(str(self.model.beta_max))
 
     def draw_shifted(self, fig):
         pass
