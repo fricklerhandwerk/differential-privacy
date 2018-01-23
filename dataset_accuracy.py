@@ -8,7 +8,7 @@ from accuracy import accuracy_optimal
 
 
 def error_rate(b, k, e1, e2, queries, T, c):
-    alpha = accuracy_optimal(b, k, e1, e2)
+    alpha = accuracy_optimal(1-b, k, e1, e2)
     worst_scores = np.sum(queries[queries >= (T - alpha)][-c:])
     top_scores = np.sum(queries[:c])
     return 1 - worst_scores/top_scores
@@ -28,10 +28,10 @@ if __name__ == '__main__':
 
     fig, ax = plt.subplots()
     plt.xlim(0,1)
-    plt.ylim(0,1)
-    ys = np.linspace(0.001, 0.999, k/2)
-    error_rate_cdf = [error_rate(y, k, e1, e2, items, T, c) for y in ys]
-    ax.plot(error_rate_cdf, ys[::-1], color="blue", linewidth=2.0, label="CDF")
+    ys = np.linspace(0.001, 0.999, k/20)
+    error_rate_cdf = np.array([error_rate(y, k, e1, e2, items, T, c) for y in ys])
+    ax.plot(error_rate_cdf, ys, color="blue", linewidth=2.0, label="CDF")
+    ax.plot(error_rate_cdf, np.gradient(error_rate_cdf, ys), color="red", linewidth=2.0, label="PDF")
     plt.xlabel(r"$x$")
     plt.ylabel(r"$1 - \beta$")
     plt.title(r"$\mathrm{Pr}(\mathrm{SER} \leq x) \leq 1 - \beta$")
