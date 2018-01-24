@@ -10,10 +10,12 @@ def threshold(c, queries):
     return (queries[c-1] + queries[c])/2
 
 
-def epsilon(e, c, monotonic=True):
+def epsilon(e, c, sensitivity=1, monotonic=True):
     f = factor(monotonic)
     e1 = e/(1+(f*c)**(2/3))
     e2 = e - e1
+    e1 = e1 / sensitivity
+    e2 = e2 / (sensitivity * f * c)
     return e1, e2
 
 
@@ -50,17 +52,12 @@ def factor(monotonic):
 if __name__ == '__main__':
     queries = np.loadtxt('data/kosarak_clean.json', dtype=int)
     step = 1
-    sensitivity = 1
-    monotonic = True
-    f = factor(monotonic)
-    c = 50
+    c = 25
     T = threshold(c, queries)
     k = len(queries)
 
     e = 0.1
-    e1, e2 = epsilon(e, c, monotonic)
-    e1 = e1 / sensitivity
-    e2 = e2 / (sensitivity * f * c)
+    e1, e2 = epsilon(e, c)
 
     fig, ax = plt.subplots()
     xs, ys = error_rate_cdf(k, e1, e2, queries, T, c, step=step)
