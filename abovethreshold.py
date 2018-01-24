@@ -153,7 +153,7 @@ class Model(object):
 
     @property
     def threshold_scale(self):
-        return self.sensitivity/self.epsilon1
+        return self.sensitivity / self.epsilon1
 
     @property
     def query_scale(self):
