@@ -122,6 +122,8 @@ def plot():
     ax.plot(xs, [total_improved(x, k, e1, e2) for x in xs], color="green", linewidth=2.0, label="improved")
     ax.plot(xs, [total_optimal(x, k, e1, e2) for x in xs], color="blue", linewidth=2.0, label="optimal")
     ax.legend(loc='upper right')
+    ax.set_xlabel(r"$\alpha$")
+    ax.set_ylabel(r"$\beta$")
     plt.show(block=False)
 
     fig, ax = plt.subplots()
@@ -132,6 +134,8 @@ def plot():
     ax.plot([accuracy_improved(beta2(y, e1, e2, k), e2, k) for y in ys], ys, color="red", linewidth=2.0, label="baseline")
     ax.plot([accuracy_optimal(y, k, e1, e2) for y in ys], ys, color="blue", linewidth=2.0, label="optimal")
     ax.legend(loc='upper right')
+    ax.set_xlabel(r"$\alpha$")
+    ax.set_ylabel(r"$\beta$")
     plt.show()
 
 if __name__ == '__main__':
