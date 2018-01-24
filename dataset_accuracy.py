@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
 
-from pprint import pprint as pp
-import json
 import matplotlib.pyplot as plt
-from math import isclose
 import numpy as np
-import scipy
-from numpy import log
 from accuracy import total_optimal
 from collections import defaultdict
 
