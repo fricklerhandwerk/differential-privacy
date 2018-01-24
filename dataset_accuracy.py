@@ -6,6 +6,16 @@ from accuracy import total_optimal
 from collections import defaultdict
 
 
+def threshold(c, queries):
+    return (queries[c-1] + queries[c])/2
+
+
+def epsilon(e, monotonic=True):
+    e1 = e/(1+(factor*c)**(2/3))
+    e2 = e - e1
+    return e1, e2
+
+
 def error_rate_cdf(k, e1, e2, queries, T, c):
     return zip(*uniq_xs(error_rate(a, k, e1, e2, queries, T, c)
                         for a in np.arange(T+1)))
@@ -34,16 +44,14 @@ def uniq_xs(pairs_gen):
 
 if __name__ == '__main__':
     queries = np.loadtxt('data/kosarak_clean.json', dtype=int)
-    monotonic = True
     sensitivity = 1
     factor = 1 if monotonic else 2
     c = 100
-    T = (queries[c-1] + queries[c])/2
+    T = threshold(c, queries)
     k = len(queries)
 
     e = 0.1
-    e1 = e/(1+(factor*c)**(2/3))
-    e2 = e - e1
+    e1, e2 = epsilon(e)
 
     fig, ax = plt.subplots()
     xs, ys = error_rate_cdf(k, e1, e2, queries, T, c)
