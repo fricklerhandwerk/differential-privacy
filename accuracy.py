@@ -55,7 +55,7 @@ def threshold(x, e1):
 
 def queries(x, k, e2):
     """upper bound on probability that any of k queries is >= x"""
-    return min(1, k*exp(-(x/2)*e2/2))
+    return clip(k*exp(-(x/2)*e2/2))
 
 
 def queries_improved(x, k, e2):
@@ -63,7 +63,7 @@ def queries_improved(x, k, e2):
     def f(l):
         return (-1)**l * exp(-l*(x/2)*e2/2)
     result = -fsum(comb(k, l) * f(l) for l in range(1, k+1))
-    return min(1, result)
+    return clip(result)
 
 
 def total_overestimate(x, k, e1, e2):
@@ -75,19 +75,23 @@ def total_overestimate(x, k, e1, e2):
 def total(x, k, e1, e2):
     """bound on total noise"""
     # inverse function of accuracy_improved
-    return min(1, threshold(x, e1) + queries(x, k, e2))
+    return clip(threshold(x, e1) + queries(x, k, e2))
 
 
 def total_improved(x, k, e1, e2):
     """improved bound of total noise"""
-    return min(1, threshold(x, e1) + queries_improved(x, k, e2))
+    return clip(threshold(x, e1) + queries_improved(x, k, e2))
 
 
 def total_optimal(x, k, e1, e2):
     # inverse function of accuracy_optimal
     e = 2*e1+e2
     wow = (e)/(((exp(e1*e2*x)*(e2**e2))/((k/(2*e1))**(2*e1)))**(1/e))
-    return min(1,wow)
+    return clip(wow)
+
+
+def clip(x):
+    return min(1, x)
 
 
 def plot():
