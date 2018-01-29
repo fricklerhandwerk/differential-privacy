@@ -51,6 +51,7 @@ class Distribution(object):
     def state(self):
         return State.fromfun(self.pdf, R)
 
+
 class Laplace(Distribution):
     """Laplace distribution"""
 
