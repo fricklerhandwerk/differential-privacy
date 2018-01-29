@@ -2,7 +2,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-from accuracy import total_optimal
+from accuracy import total_precise
 from collections import defaultdict
 
 
@@ -25,7 +25,7 @@ def error_rate_cdf(k, e1, e2, queries, T, c, step=1):
 
 
 def error_rate(a, k, e1, e2, queries, T, c):
-    beta = total_optimal(a, k, e1, e2)
+    beta = total_precise(a, k, e1, e2)
     worst_scores = np.sum(queries[queries >= (T - a)][-c:])
     top_scores = np.sum(queries[:c])
     return 1 - worst_scores/top_scores, 1 - beta

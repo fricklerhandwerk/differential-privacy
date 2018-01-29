@@ -1,10 +1,6 @@
-import gmpy2
-from gmpy2 import comb
-from gmpy2 import exp
-from gmpy2 import fsum
 from math import log
 from math import isclose
-from numpy import nextafter
+from scipy.integrate import quad
 from scipy.optimize import root
 
 from matplotlib import pyplot as plt
@@ -12,82 +8,128 @@ from matplotlib import pyplot as plt
 from efprob.dc import *
 from algorithms import *
 
-gmpy2.get_context().precision = 1000
 
-def threshold_accuracy(b, e):
-    return 2*log(2/b)/e
-
-
-def queries_accuracy(k, b, e):
-    return 4*(log(k) + log(2/b))/e
+def accuracy_threshold(b1, s1):
+    # we use factor two because a1 = a2 = a/2
+    return -2*s1*log(b1)
 
 
-def accuracy_overestimate(b, k, e1, e2):
-    # the definition in [@privacybook, p. 60] is only valid for e1 = e2 = e/2.
-    return max(threshold_accuracy(b, e1), queries_accuracy(k, b, e2))
+def accuracy_queries(b2, k, s2):
+    # we use factor two because a1 = a2 = a/2
+    return -2*s2*(log(b2/k))
 
 
-def beta2(b, e1, e2, k):
-    def opt(x):
-        return b - x - (k/x)**(-2*e1/e2)
-    return root(opt, nextafter(b,0), tol=nextafter(0,1)).x[0]
+def accuracy_queries_improved(b2, k, s2):
+    return -2*s2*log(1 - (1 - b2)**(1/k))
 
 
-def beta1(b, e1, e2, k):
-    def opt(x):
-        return b - x - k*(x**(e2/(2*e1)))
-    return root(opt, nextafter(b,0), tol=nextafter(0,1)).x[0]
+def accuracy_overestimate(b, k, s1, s2):
+    # the definition in [@privacybook, p. 60] is only valid for
+    # e1 = e2 = e/2, sensitivity = 1, monotonic = False.
+    # here we only assume a1 = a2 = a/2 and b1 = b2 = b/2
+    return max(accuracy_threshold(b/2, s1), accuracy_queries(b/2, k, s2))
 
 
-def accuracy_improved(b2, e2, k):
-    return 4*log(k/b2)/e2
+def accuracy_baseline(b, k, s1, s2):
+    b1 = beta1_baseline(b, k, s1, s2)
+    b2 = beta2_baseline(b, k, s1, s2)
+    assert isclose(b1 + b2, b)
+
+    threshold = accuracy_threshold(b1, s1)
+    queries = accuracy_queries(b2, k, s2)
+    assert isclose(threshold, queries), (threshold, queries)
+
+    return threshold
 
 
-def accuracy_optimal(b, k, e1, e2):
-    a1 = (log(2*e1+e2) - log(e2*b))/e1
-    a2 = (2/e2) * (log(k) + log(2*e1+e2) - log(2*e1*b))
-    return a1 + a2
+def beta1_baseline(b, k, s1, s2):
+    def opt(b1):
+        return b - b1 - k*(b1**(s1/s2))
+    return optimize(opt, b/2)
 
 
-def threshold(x, e1):
-    return exp(-(x/2)*e1)
+def beta2_baseline(b, k, s1, s2):
+    def opt(b2):
+        return b - b2 - (b2/k)**(s2/s1)
+    return optimize(opt, b/2)
 
 
-def queries(x, k, e2):
+def accuracy_improved(b, k, s1, s2):
+    b1 = beta1_improved(b, k, s1, s2)
+    b2 = beta2_improved(b, k, s1, s2)
+    assert isclose(b1 + b2, b)
+
+    threshold = accuracy_threshold(b1, s1)
+    queries = accuracy_queries_improved(b2, k, s2)
+    assert isclose(threshold, queries), (threshold, queries)
+
+    return threshold
+
+
+def beta1_improved(b, k, s1, s2):
+    def opt(b1):
+        return b - b1 - 1 + (1 - b1**(s1/s2))**k
+    return optimize(opt, b/2)
+
+
+def beta2_improved(b, k, s1, s2):
+    def opt(b2):
+        return b - b2 - (1 - (1 - b2)**(1/k))**(s2/s1)
+    return optimize(opt, b/2)
+
+def accuracy_optimized(b, k, s1, s2):
+    return log(((s2/s1 + 1)**s1 * (k*(s1/s2 + 1))**s2) / b**(s1 + s2))
+
+
+def optimize(func, guess):
+    return root(func, guess).x[0]
+
+
+def threshold(a1, s1):
+    return exp(-a1/s1)
+
+
+def queries(a2, k, s2):
     """upper bound on probability that any of k queries is >= x"""
-    return clip(k*exp(-(x/2)*e2/2))
+    return clip(k*exp(-a2/s2))
 
 
-def queries_improved(x, k, e2):
+def queries_improved(a2, k, s2):
     """precise probability that any of k queries is >= x"""
-    def f(l):
-        return (-1)**l * exp(-l*(x/2)*e2/2)
-    result = -fsum(comb(k, l) * f(l) for l in range(1, k+1))
-    return clip(result)
+    return clip(1 - (1 - exp(-a2/s2))**k)
 
 
-def total_overestimate(x, k, e1, e2):
-    # we have to take factor two since we assume b1 = b2 = b/2,
+def probability_overestimate(a, k, e1, e2):
+    # we have to take factor two on the resulting probability since we assume b1 = b2 = b/2,
     # and each noise factor accounts for only one part of the probability budget
-    return 2*max(threshold(x, e1), queries(x, k, e2))
+    # same goes for the argument `a`, where we assume a1 = a2 = a/2
+    return 2 * max(threshold(a/2, e1), queries(a/2, k, e2))
 
 
-def total(x, k, e1, e2):
+def probability_baseline(a, k, s1, s2):
     """bound on total noise"""
     # inverse function of accuracy_improved
-    return clip(threshold(x, e1) + queries(x, k, e2))
+    # allows b1 != b2, but still assumes a1 = a2 = a/2
+    return clip(threshold(a/2, s1) + queries(a/2, k, s2))
 
 
-def total_improved(x, k, e1, e2):
+def probability_improved(a, k, s1, s2):
     """improved bound of total noise"""
-    return clip(threshold(x, e1) + queries_improved(x, k, e2))
+    # allows b1 != b2, but still assumes a1 = a2 = a/2
+    return clip(threshold(a/2, s1) + queries_improved(a/2, k, s2))
 
 
-def total_optimal(x, k, e1, e2):
-    # inverse function of accuracy_optimal
-    e = 2*e1+e2
-    wow = (e)/(((exp(e1*e2*x)*(e2**e2))/((k/(2*e1))**(2*e1)))**(1/e))
-    return clip(wow)
+def probability_optimized(a, k, s1, s2):
+    # inverse function of accuracy_optimized
+    return clip((((s2/s1 + 1)**s1 * (k*(s1/s2 + 1))**s2)/ exp(a))**(1/(s1 + s2)))
+
+
+def probability_precise(x, k, s1, s2):
+    def inner(t):
+        return exp(t/s2 - t/s1) * ((1-exp(-t/s2))**(k-1))
+    def outer(z):
+        return (k/(s1*s2))*exp(-z/s1) * quad(inner, 0, z)[0]
+    return 1-quad(outer, 0, x)[0]
 
 
 def clip(x):
@@ -96,31 +138,30 @@ def clip(x):
 
 def plot():
     k = 10
+    c = 1
+    sensitivity = 1
+    monotonic = False
+    factor = 1 if monotonic else 2
     b = 0.2
     e1 = 0.1
     e2 = 0.2
     e = e1 + e2
+    s1 = sensitivity / e1
+    s2 = sensitivity * factor * c / e2
 
-    b1 = beta1(b, e1, e2, k)
-    b2 = beta2(b, e1, e2, k)
-
-    MAX = max(accuracy_overestimate(b, k, e1, e2), accuracy_improved(b2, e2, k), accuracy_optimal(b, k, e1, e2))
-
-    print(accuracy_overestimate(b, k, e1, e2))
-    print(accuracy_improved(b2, e2, k))
-    print(accuracy_optimal(b, k, e1, e2))
-
-    assert isclose(total(accuracy_improved(b2, e2, k), k, e1, e2), b), total(accuracy_improved(b2, e2, k), k, e1, e2)
+    example = [accuracy_overestimate(b, k, s1, s2), accuracy_baseline(b, k, s1, s2), accuracy_optimized(b, k, e1, e2)]
+    MAX = max(example)
 
     fig, ax = plt.subplots()
     plt.ylim(0,1)
     plt.xlim(0,MAX)
 
     xs = np.arange(MAX)
-    ax.plot(xs, [total_overestimate(x, k, e1, e2) for x in xs], color="pink", linewidth=2.0, label="overestimate")
-    ax.plot(xs, [total(x, k, e1, e2) for x in xs], color="red", linewidth=2.0, label="baseline")
-    ax.plot(xs, [total_improved(x, k, e1, e2) for x in xs], color="green", linewidth=2.0, label="improved")
-    ax.plot(xs, [total_optimal(x, k, e1, e2) for x in xs], color="blue", linewidth=2.0, label="optimal")
+    ax.plot(xs, [probability_overestimate(x, k, s1, s2) for x in xs], color="pink", linewidth=2.0, label="overestimate")
+    ax.plot(xs, [probability_baseline(x, k, s1, s2) for x in xs], color="red", linewidth=2.0, label="baseline")
+    ax.plot(xs, [probability_improved(x, k, s1, s2) for x in xs], color="green", linewidth=2.0, label="improved")
+    ax.plot(xs, [probability_optimized(x, k, s1, s2) for x in xs], color="blue", linewidth=2.0, label="optimized")
+    ax.plot(xs, [probability_precise(x, k, s1, s2) for x in xs], color="black", linewidth=2.0, label="precise")
     ax.legend(loc='upper right')
     ax.set_xlabel(r"$\alpha$")
     ax.set_ylabel(r"$\beta$")
@@ -130,9 +171,10 @@ def plot():
     plt.ylim(0,1)
     plt.xlim(0,MAX)
     ys = np.linspace(0.001,1,256)
-    ax.plot([accuracy_overestimate(y, k, e1, e2) for y in ys], ys, color="pink", linewidth=2.0, label="overestimate")
-    ax.plot([accuracy_improved(beta2(y, e1, e2, k), e2, k) for y in ys], ys, color="red", linewidth=2.0, label="baseline")
-    ax.plot([accuracy_optimal(y, k, e1, e2) for y in ys], ys, color="blue", linewidth=2.0, label="optimal")
+    ax.plot([accuracy_overestimate(y, k, s1, s2) for y in ys], ys, color="pink", linewidth=2.0, label="overestimate")
+    ax.plot([accuracy_baseline(y, k, s1, s2) for y in ys], ys, color="red", linewidth=2.0, label="baseline")
+    ax.plot([accuracy_improved(y, k, s1, s2) for y in ys], ys, color="green", linewidth=2.0, label="improved")
+    ax.plot([accuracy_optimized(y, k, s1, s2) for y in ys], ys, color="blue", linewidth=2.0, label="optimized")
     ax.legend(loc='upper right')
     ax.set_xlabel(r"$\alpha$")
     ax.set_ylabel(r"$\beta$")
