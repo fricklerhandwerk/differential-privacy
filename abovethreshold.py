@@ -586,11 +586,6 @@ class Frame(wx.Frame):
         self.pr_diff.SetLabel("{:.3f}".format(self.model.pr_diff))
         self.pr_correct.SetLabel("{:.3f}".format(self.model.pr_correct))
 
-    def draw_shifted(self, fig):
-        pass
-
-    def draw_accuracy(self):
-        pass
 
     def draw(self):
         self.update_stats()
