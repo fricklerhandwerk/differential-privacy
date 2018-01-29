@@ -1,5 +1,6 @@
 from math import log
 from math import isclose
+import numpy as np
 from scipy.integrate import quad
 from scipy.optimize import root
 
@@ -31,15 +32,9 @@ def accuracy_overestimate(b, k, s1, s2):
 
 
 def accuracy_baseline(b, k, s1, s2):
-    b1 = beta1_baseline(b, k, s1, s2)
     b2 = beta2_baseline(b, k, s1, s2)
-    assert isclose(b1 + b2, b)
-
-    threshold = accuracy_threshold(b1, s1)
     queries = accuracy_queries(b2, k, s2)
-    assert isclose(threshold, queries), (threshold, queries)
-
-    return threshold
+    return queries
 
 
 def beta1_baseline(b, k, s1, s2):
@@ -55,15 +50,9 @@ def beta2_baseline(b, k, s1, s2):
 
 
 def accuracy_improved(b, k, s1, s2):
-    b1 = beta1_improved(b, k, s1, s2)
     b2 = beta2_improved(b, k, s1, s2)
-    assert isclose(b1 + b2, b)
-
-    threshold = accuracy_threshold(b1, s1)
     queries = accuracy_queries_improved(b2, k, s2)
-    assert isclose(threshold, queries), (threshold, queries)
-
-    return threshold
+    return queries
 
 
 def beta1_improved(b, k, s1, s2):
@@ -77,8 +66,9 @@ def beta2_improved(b, k, s1, s2):
         return b - b2 - (1 - (1 - b2)**(1/k))**(s2/s1)
     return optimize(opt, b/2)
 
+
 def accuracy_optimized(b, k, s1, s2):
-    return log(((s2/s1 + 1)**s1 * (k*(s1/s2 + 1))**s2) / b**(s1 + s2))
+    return s1 * log((s2/s1 + 1)/b) + s2 * log(k*(s1/s2 + 1)/b)
 
 
 def optimize(func, guess):
@@ -103,7 +93,7 @@ def probability_overestimate(a, k, e1, e2):
     # we have to take factor two on the resulting probability since we assume b1 = b2 = b/2,
     # and each noise factor accounts for only one part of the probability budget
     # same goes for the argument `a`, where we assume a1 = a2 = a/2
-    return 2 * max(threshold(a/2, e1), queries(a/2, k, e2))
+    return clip(2 * max(threshold(a/2, e1), queries(a/2, k, e2)))
 
 
 def probability_baseline(a, k, s1, s2):
@@ -121,15 +111,20 @@ def probability_improved(a, k, s1, s2):
 
 def probability_optimized(a, k, s1, s2):
     # inverse function of accuracy_optimized
-    return clip((((s2/s1 + 1)**s1 * (k*(s1/s2 + 1))**s2)/ exp(a))**(1/(s1 + s2)))
+    return clip((((s2/s1 + 1)**(s1/(s1 + s2)) * (k*(s1/s2 + 1))**(s2/(s1 + s2))) / exp(a/(s1 + s2))))
 
 
 def probability_precise(x, k, s1, s2):
-    def inner(t):
-        return exp(t/s2 - t/s1) * ((1-exp(-t/s2))**(k-1))
+    def inner(z):
+        def wrap(t):
+            return exp((t-z)/s1 - t/s2) * ((1-exp(-t/s2))**(k-1))
+        return wrap
     def outer(z):
-        return (k/(s1*s2))*exp(-z/s1) * quad(inner, 0, z)[0]
-    return 1-quad(outer, 0, x)[0]
+        return (k/(s1*s2)) * quad(inner(z), 0, z)[0]
+    try:
+        return 1 - quad(outer, 0, x)[0]
+    except:
+        import pdb; pdb.set_trace()
 
 
 def clip(x):
@@ -149,7 +144,7 @@ def plot():
     s1 = sensitivity / e1
     s2 = sensitivity * factor * c / e2
 
-    example = [accuracy_overestimate(b, k, s1, s2), accuracy_baseline(b, k, s1, s2), accuracy_optimized(b, k, e1, e2)]
+    example = [accuracy_overestimate(b, k, s1, s2), accuracy_baseline(b, k, s1, s2), accuracy_optimized(b, k, s1, s2)]
     MAX = max(example)
 
     fig, ax = plt.subplots()
@@ -157,6 +152,7 @@ def plot():
     plt.xlim(0,MAX)
 
     xs = np.arange(MAX)
+
     ax.plot(xs, [probability_overestimate(x, k, s1, s2) for x in xs], color="pink", linewidth=2.0, label="overestimate")
     ax.plot(xs, [probability_baseline(x, k, s1, s2) for x in xs], color="red", linewidth=2.0, label="baseline")
     ax.plot(xs, [probability_improved(x, k, s1, s2) for x in xs], color="green", linewidth=2.0, label="improved")
