@@ -13,12 +13,13 @@ from matplotlib.ticker import MaxNLocator
 
 from math import log
 from numpy import product
+from scipy.integrate import quad
 
 from algorithms import *
 from accuracy import accuracy_overestimate
-from accuracy import total_overestimate
-from accuracy import total
-from accuracy import total_optimal
+from accuracy import probability_overestimate
+from accuracy import probability_baseline
+from accuracy import probability_optimized
 
 
 class Model(object):
@@ -53,7 +54,6 @@ class Model(object):
         """probabilities of each response item with respect to queries and threshold"""
         self.pr_items = []
 
-        self.update()
 
     def random_response(self):
         return [self.randbool() for _ in range(self.length)]
@@ -125,6 +125,40 @@ class Model(object):
             return pr_above
         else:
             return 1 - pr_above
+
+    def accuracy_simple(self, alpha):
+        below = [q for q in self.queries if q <= self.threshold - alpha]
+        above = [q for q in self.queries if q >= self.threshold + alpha]
+        max_below = max(below)
+        min_above = min(above)
+
+        def pred(x):
+            approx_below = self.pr_single_response(False, max_below, x)**len(below)
+            approx_above = self.pr_single_response(True, min_above, x)**len(above)
+            return below * above
+
+        def state(x):
+            return self.threshold_state(x) * pred(x)
+
+        print("alpha: {}, below: {}, above: {}".format(alpha, len(below), len(above)))
+        return quad(state, 0, max(self.queries), points=[self.threshold])[0]
+
+    def accuracy_precise(self, alpha):
+        below = [q for q in self.queries if q <= self.threshold - alpha]
+        above = [q for q in self.queries if q >= self.threshold + alpha]
+        max_below = max(below)
+        min_above = min(above)
+
+        def pred(x):
+            rs = [False] * len(below) + [True] * len(above)
+            qs = below + above
+            return product([self.pr_single_response(r, q, x) for (r, q) in zip(rs, qs)])
+
+        def state(x):
+            return self.threshold_state(x) * pred_precise(x)
+
+        print("alpha: {}, below: {}, above: {}".format(alpha, len(below), len(above)))
+        return quad(state, 0, max(self.queries), points=[self.threshold])[0]
 
     @property
     def pr_diff(self):
@@ -274,15 +308,15 @@ class Accuracy(LineGraph):
         ax.clear()
 
         k = self.model.length
-        e1 = 1/self.model.threshold_scale
-        e2 = 1/self.model.query_scale
+        s1 = self.model.threshold_scale
+        s2 = self.model.query_scale
 
-        MAX = accuracy_overestimate(0.01, k, e1, e2)
+        MAX = accuracy_overestimate(0.01, k, s1, s2)
 
         xs = np.arange(MAX)
-        ax.plot(xs, [total_overestimate(x, k, e1, e2) for x in xs], color="red", linewidth=2.0, label="overestimate")
-        ax.plot(xs, [total(x, k, e1, e2) for x in xs], color="green", linewidth=2.0, label="baseline")
-        ax.plot(xs, [total_optimal(x, k, e1, e2) for x in xs], color="blue", linewidth=2.0, label="optimal")
+        ax.plot(xs, [probability_overestimate(x, k, s1, s2) for x in xs], color="red", linewidth=2.0, label="overestimate")
+        ax.plot(xs, [probability_baseline(x, k, s1, s2) for x in xs], color="green", linewidth=2.0, label="baseline")
+        ax.plot(xs, [probability_optimized(x, k, s1, s2) for x in xs], color="blue", linewidth=2.0, label="optimized")
         ax.legend(loc='upper right')
         ax.set_ylim(0, 1)
         ax.set_xlim(0, MAX)
@@ -303,7 +337,7 @@ class Frame(wx.Frame):
         self.menubar = self.create_menu()
         self.model = Model(100, e1=0.1, e2=0.2)
         self.create_view()
-
+        self.model.update()
         self.draw()
 
     def create_menu(self):
