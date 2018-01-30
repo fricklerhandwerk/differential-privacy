@@ -77,7 +77,7 @@ def factor(monotonic):
 
 
 if __name__ == '__main__':
-    queries = np.loadtxt('data/bms-pos_clean.json', dtype=int)
+    queries = np.loadtxt('data/bms-pos.txt', dtype=int)
     step = 1
     c = 50
     T = threshold(c, queries)

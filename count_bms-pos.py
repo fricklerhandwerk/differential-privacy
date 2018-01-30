@@ -4,12 +4,12 @@ import csv
 
 records = set()
 items = set()
-with open('data/BMS-POS.dat') as file:
-	reader = csv.reader(file, delimiter='\t')
-	for line in reader:
-		record, item = map(int, line)
-		records.add(record)
-		items.add(item)
+with open('data/bms-pos.dat') as file:
+    reader = csv.reader(file, delimiter='\t')
+    for line in reader:
+        record, item = map(int, line)
+        records.add(record)
+        items.add(item)
 
 print("records:", len(records))
 print("items:", len(items))

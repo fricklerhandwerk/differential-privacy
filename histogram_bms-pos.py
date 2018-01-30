@@ -5,7 +5,7 @@ import csv
 import json
 
 data = Counter()
-with open('data/BMS-POS.dat') as file:
+with open('data/bms-pos.dat') as file:
     reader = csv.reader(file, delimiter='\t')
     data.update((int(item) for _record, item in reader))
 
