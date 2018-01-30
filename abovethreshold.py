@@ -126,16 +126,25 @@ class Model(object):
         else:
             return 1 - pr_above
 
+
+    def below(self, alpha):
+        return queries[queries <= self.threshold - alpha]
+
+
+    def above(self, alpha):
+        return queries[queries >= self.threshold + alpha]
+
+
     def accuracy_simple(self, alpha):
-        below = [q for q in self.queries if q <= self.threshold - alpha]
-        above = [q for q in self.queries if q >= self.threshold + alpha]
+        below = self.below(alpha)
+        above = self.above(alpha)
         max_below = max(below)
         min_above = min(above)
 
         def pred(x):
-            approx_below = self.pr_single_response(False, max_below, x)**len(below)
-            approx_above = self.pr_single_response(True, min_above, x)**len(above)
-            return below * above
+            approx_below = self.pr_single_response(True, max_below, x)**len(below)
+            approx_above = self.pr_single_response(False, min_above, x)**len(above)
+            return approx_below * approx_above
 
         def state(x):
             return self.threshold_state(x) * pred(x)
@@ -144,18 +153,16 @@ class Model(object):
         return quad(state, 0, max(self.queries), points=[self.threshold])[0]
 
     def accuracy_precise(self, alpha):
-        below = [q for q in self.queries if q <= self.threshold - alpha]
-        above = [q for q in self.queries if q >= self.threshold + alpha]
-        max_below = max(below)
-        min_above = min(above)
+        below = self.below(alpha)
+        above = self.above(alpha)
 
         def pred(x):
-            rs = [False] * len(below) + [True] * len(above)
+            rs = [True] * len(below) + [False] * len(above)
             qs = below + above
             return product([self.pr_single_response(r, q, x) for (r, q) in zip(rs, qs)])
 
         def state(x):
-            return self.threshold_state(x) * pred_precise(x)
+            return self.threshold_state(x) * pred(x)
 
         print("alpha: {}, below: {}, above: {}".format(alpha, len(below), len(above)))
         return quad(state, 0, max(self.queries), points=[self.threshold])[0]
