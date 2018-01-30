@@ -6,8 +6,8 @@ import json
 
 data = Counter()
 with open('data/BMS-POS.dat') as file:
-	reader = csv.reader(file, delimiter='\t')
-	data.update((int(item) for _record, item in reader))
+    reader = csv.reader(file, delimiter='\t')
+    data.update((int(item) for _record, item in reader))
 
 with open('data/bms-pos.json', 'w') as f:
-	json.dump(dict(data), f, indent=0)
+    json.dump(dict(data), f, indent=0)
