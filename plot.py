@@ -12,13 +12,6 @@ with open('data/bms-pos.json') as f:
 
 with open('data/aol.json') as f:
 	aol = json.load(f)
-	del aol['']
-
-with open('data/stopwords.txt') as f:
-	for word in f:
-		word = word.strip()
-		if word in aol:
-			del aol[word]
 
 # The zero-th value is needed because the logscale shifts it out
 # of the graph and otherwise we would lose the highest-valued point.

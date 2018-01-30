@@ -19,6 +19,14 @@ for i in range(10):
 
 data = Counter(item for query in queries for item in re.split(separators, query))
 
-with open('data/aol.json', 'w') as f:
-	json.dump(dict(data), f, indent=0)
+data = dict(data)
 
+# filter out stopwords
+with open('data/stopwords.txt') as f:
+	for word in f:
+		word = word.strip()
+		if word in data:
+			del data[word]
+
+with open('data/aol.json', 'w') as f:
+	json.dump(data, f, indent=0)
