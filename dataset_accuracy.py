@@ -14,6 +14,14 @@ def threshold(c, queries):
     return (queries[c-1] + queries[c])/2
 
 
+def below(queries, threshold, alpha):
+    return queries[queries <= threshold - alpha]
+
+
+def above(queries, threshold, alpha):
+    return queries[queries >= threshold + alpha]
+
+
 def error_rate_cdf(error_rate_func, model, step=1):
     xs = (((len(model.below(a)), len(model.above(a))), a) for a in np.arange(model.threshold+1)[::step])
     uniq = list(uniq_xs(xs))

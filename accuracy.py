@@ -121,7 +121,11 @@ def probability_precise(x, k, s1, s2):
         return wrap
     def outer(z):
         return (k/(s1*s2)) * quad(inner(z), 0, z)[0]
-    return 1 - quad(outer, 0, x)[0]
+    result = 1 - quad(outer, 0, x)[0]
+    if result < 0:
+        return 0
+    else:
+        return result
 
 
 def clip(x):

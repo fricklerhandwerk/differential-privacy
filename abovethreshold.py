@@ -127,14 +127,11 @@ class Model(object):
         else:
             return 1 - pr_above
 
-
     def below(self, alpha):
         return self.queries[self.queries <= self.threshold - alpha]
 
-
     def above(self, alpha):
         return self.queries[self.queries >= self.threshold + alpha]
-
 
     def accuracy_simple(self, alpha):
         below = self.below(alpha)
