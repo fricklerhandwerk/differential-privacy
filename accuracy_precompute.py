@@ -32,12 +32,12 @@ def ratios(c, monotonic=True):
     }
 
 
-def write_alphas(data):
+def write_alphas(data, start=1):
     # compute probabilities only for unique tuples with numbers of queries
     # above and below the T+/-alpha range
     queries = np.loadtxt('data/{}.txt'.format(data), dtype=int)
     k = queries[0]
-    for c in cs:
+    for c in cs[start:]:
         T = threshold(c, queries)
 
         above_below = {}
