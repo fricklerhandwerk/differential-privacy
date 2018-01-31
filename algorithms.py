@@ -18,14 +18,16 @@ def report_noisy_max(database, queries, epsilon):
     return [Laplace(1/epsilon, q(database)) for q in queries]
 
 
-def above_threshold(database, queries, threshold, e1, e2, sensitivity=1, monotonic=True):
-    result = []
+def sparse_vector(database, queries, threshold, e1, e2, c, sensitivity=1, monotonic=True):
+    """
+    since this is an abstraction to random distributions, and we have no
+    obvious way to halt after some condition is met, it is
+    the caller's obligation to sample from the distributions and cut off
+    the result when `c` positive answers are collected.
+    """
+    factor = 1 if monotonic else 2
     T = Laplace(sensitivity/e1, threshold)
-    for q in queries:
-        factor = 1 if monotonic else 2
-        v = Laplace(factor*sensitivity/e2, q(database))
-        result.append(flip(v.larger(T)))
-    return result
+    return T, [Laplace(factor*c*sensitivity/e2, q(database)) for q in queries]
 
 
 def exponential(database, utility, epsilon, sensitivity=1, monotonic=True):
@@ -46,6 +48,9 @@ class Distribution(object):
     def __init__(self, scale, loc=0):
         self.scale = scale
         self.loc = loc
+
+    def __call__(self, x):
+        return self.state(x)
 
     @property
     def state(self):
