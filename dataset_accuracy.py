@@ -2,22 +2,16 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-from accuracy import probability_precise
-from accuracy import probability_optimized
 from collections import defaultdict
 
-
 from abovethreshold import Model
+from accuracy import probability_precise
+from accuracy import probability_optimized
+from algorithms import *
+
 
 def threshold(c, queries):
     return (queries[c-1] + queries[c])/2
-
-
-def epsilon(e, c, monotonic=True):
-    f = factor(monotonic)
-    e1 = e/(1+(f*c)**(2/3))
-    e2 = e - e1
-    return e1, e2
 
 
 def error_rate_cdf(error_rate_func, model, step=1):
@@ -31,7 +25,7 @@ def error_rate(model, a):
     s1 = model.threshold_scale
     s2 = model.query_scale
     c = model.count
-    beta = probability_optimized(a, len(model.queries), s1, s2)
+    beta = probability_precise(a, len(model.queries), s1, s2)
     worst_scores = sum(model.queries[model.queries >= model.threshold - a][-c:])
     top_scores = sum(model.queries[:c])
     result = 1 - worst_scores/top_scores, 1 - beta
@@ -70,10 +64,6 @@ def uniq_xs(pairs_gen):
         pairs_list.append((x, y))
     indices = [x for v in dups.values() for x in v[:-1] if len(v) > 1]
     return ((x, y) for i, (x, y) in enumerate(pairs_list) if i not in indices)
-
-
-def factor(monotonic):
-    return 1 if monotonic else 2
 
 
 if __name__ == '__main__':

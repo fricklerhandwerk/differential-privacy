@@ -129,17 +129,12 @@ def clip(x):
 
 
 def plot():
+    e = 0.3
+    e1, e2 = epsilon(e, ratio=2)
+    s1, s2 = scale(e1, e2, c=1, sensitivity=1, monotonic=False)
+
     k = 10
-    c = 1
-    sensitivity = 1
-    monotonic = False
-    factor = 1 if monotonic else 2
     b = 0.2
-    e1 = 0.1
-    e2 = 0.2
-    e = e1 + e2
-    s1 = sensitivity / e1
-    s2 = sensitivity * factor * c / e2
 
     example = [accuracy_overestimate(b, k, s1, s2), accuracy_baseline(b, k, s1, s2), accuracy_optimized(b, k, s1, s2)]
     MAX = max(example)

@@ -129,11 +129,11 @@ class Model(object):
 
 
     def below(self, alpha):
-        return queries[queries <= self.threshold - alpha]
+        return self.queries[self.queries <= self.threshold - alpha]
 
 
     def above(self, alpha):
-        return queries[queries >= self.threshold + alpha]
+        return self.queries[self.queries >= self.threshold + alpha]
 
 
     def accuracy_simple(self, alpha):
