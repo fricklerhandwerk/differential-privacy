@@ -121,10 +121,7 @@ def probability_precise(x, k, s1, s2):
         return wrap
     def outer(z):
         return (k/(s1*s2)) * quad(inner(z), 0, z)[0]
-    try:
-        return 1 - quad(outer, 0, x)[0]
-    except:
-        import pdb; pdb.set_trace()
+    return 1 - quad(outer, 0, x)[0]
 
 
 def clip(x):
