@@ -15,7 +15,7 @@ from dataset_accuracy import below
 from dataset_accuracy import threshold
 
 
-datasets = ["bms-pos", "kosarak", "aol"]
+datasets = ["bms-pos", "kosarak", "aol", "zipf"]
 
 e = 0.1  # this is what [@svt] used
 cs = list(range(1, 50)) + list(range(50, 301, 25))
@@ -64,25 +64,35 @@ def write_alphas(data):
 
 
 def read_alphas(data, c):
-    with open('data/{}-alphas {}.txt'.format(data, c)) as f:
-        return json.load(f)
+    with open('experiments/{}-alphas {}.txt'.format(data, c)) as f:
+        return json.load(f, object_hook=convert)
+
+
+def convert(d):
+    result = {}
+    for k, v in d.items():
+        if k.isdigit():
+            result[int(k)] = v
+        else:
+            result[k] = v
+    return result
 
 
 def probability_basic(a, k, s1, s2, queries, alphas):
     return probability_precise(a, k, s1, s2)
 
 
-def write_probability(data, func):
+def write_probability(data, func, start=1):
     queries = np.loadtxt('data/{}.txt'.format(data), dtype=int)
     k = queries[0]
-    for c in cs:
-        alphas = read_alphas(d, c).keys()
+    for c in cs[start:]:
+        alphas = read_alphas(data, c).keys()
         total = len(alphas)
 
         for s, r in ratios(c).items():
             print("c: {}, r: {}".format(c, s))
             s1, s2 = scale(*epsilon(e, r), c)
-            with open('experiments/{} {} {}.txt'.format(d, c, s), 'a') as f:
+            with open('experiments/{} {} {}.txt'.format(data, c, s), 'a') as f:
                 last = 1
                 for i, a in enumerate(alphas):
                     p = func(a, k, s1, s2, queries, alphas)
