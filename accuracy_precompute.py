@@ -32,6 +32,18 @@ def ratios(c, monotonic=True):
     }
 
 
+
+def expand(query):
+    """expand counter to flat list"""
+    return sorted(query.elements())[::-1]
+
+
+def read_data(data):
+    with open('data/{}.json'.format(data)) as f:
+        items = json.load(f, object_hook=convert)
+        return Counter(items.values())
+
+
 def write_alphas(data, start=1):
     # compute probabilities only for unique tuples with numbers of queries
     # above and below the T+/-alpha range
