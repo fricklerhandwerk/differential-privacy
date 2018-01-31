@@ -10,8 +10,6 @@ from accuracy import accuracy_optimized
 from algorithms import scale
 from algorithms import epsilon
 from algorithms import factor
-from dataset_accuracy import above
-from dataset_accuracy import below
 from dataset_accuracy import threshold
 
 
@@ -33,9 +31,9 @@ def ratios(c, monotonic=True):
 
 
 
-def expand(query):
+def expand(queries):
     """expand counter to flat list"""
-    return sorted(query.elements())[::-1]
+    return sorted(queries.elements())[::-1]
 
 
 def read_data(data):
@@ -44,31 +42,44 @@ def read_data(data):
         return Counter(items.values())
 
 
-def write_alphas(data, start=1):
+def above(queries, T, a):
+    return {k: v for k, v in queries.items() if k >= T + a}
+
+
+def below(queries, T, a):
+    return {k: v for k, v in queries.items() if k <= T - a}
+
+
+def write_alphas(data, start=None, end=None):
     # compute probabilities only for unique tuples with numbers of queries
     # above and below the T+/-alpha range
-    queries = np.loadtxt('data/{}.txt'.format(data), dtype=int)
-    k = queries[0]
-    for c in cs[start:]:
-        T = threshold(c, queries)
+    queries = read_data(data)
+    k = max(queries.keys())
+
+    print("loaded {}, max. value: {}".format(data, k))
+
+    for c in cs[start:end]:
+        T = threshold(c, expand(queries))
+        print('T:', T, end=' ')
 
         above_below = {}
         for a in range(k):
             queries_below = below(queries, T, a)
             queries_above = above(queries, T, a)
-            above_below[(len(queries_below), len(queries_above))] = {
+            key = (len(queries_below.keys()), len(queries_above.keys()))
+            above_below[key] = {
                 'alpha': a,
                 'below': queries_below,
                 'above': queries_above,
             }
 
-        print(c, len(above_below), end='\r')
+        print('c:', c, len(above_below), end='\r')
 
         result = {}
         for _, v in above_below.items():
             result[v['alpha']] = {
-                'below': dict(Counter(v['below'].tolist())),
-                'above': dict(Counter(v['above'].tolist())),
+                'below': v['below'],
+                'above': v['above'],
             }
 
         with open('experiments/{}-alphas {}.txt'.format(data, c), 'w') as f:
@@ -94,10 +105,10 @@ def probability_basic(a, k, s1, s2, queries, alphas):
     return probability_precise(a, k, s1, s2)
 
 
-def write_probability(data, func, start=1):
+def write_probability(data, func, start=None, end=None):
     queries = np.loadtxt('data/{}.txt'.format(data), dtype=int)
     k = queries[0]
-    for c in cs[start:]:
+    for c in cs[start:end]:
         alphas = read_alphas(data, c).keys()
         total = len(alphas)
 
