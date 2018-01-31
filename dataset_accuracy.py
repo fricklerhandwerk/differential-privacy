@@ -40,7 +40,7 @@ def error_rate(model, a):
     return result
 
 
-def error_rate_simple(model, a):
+def error_rate_improved(model, a):
     c = model.count
     beta = model.accuracy_simple(a)
     worst_scores = sum(model.queries[model.queries >= model.threshold - a][-c:])
@@ -104,7 +104,7 @@ if __name__ == '__main__':
     plt.show(block=False)
 
     fig, ax = plt.subplots()
-    xs, ys = error_rate_cdf(error_rate_simple, model, step=step)
+    xs, ys = error_rate_cdf(error_rate_improved, model, step=step)
     ax.bar(xs, ys, color="red", align='edge',
            label=r"$\mathrm{Pr}(\mathrm{SER} \leq x) \geq 1 - \beta$")
 
