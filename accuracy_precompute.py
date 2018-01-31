@@ -23,7 +23,12 @@ b_min = 0.01  # only compute probabilities down to this value
 
 def ratios(c, monotonic=True):
     m = factor(monotonic)
-    return (1,'1'), (3, '3'), (m*c, 'c'), ((m*c)**(2/3), 'c23')
+    return {
+        '1': 1,
+        '3': 3,
+        'c': m*c,
+        'c23': (m*c)**(2/3),
+    }
 
 
 for d in datasets:
@@ -37,7 +42,7 @@ for d in datasets:
                        for a in range(k)}
         alphas = list(above_below.values())
 
-        for r, s in ratios(c):
+        for s, r in ratios(c).items():
             print("c: {}, r: {}".format(c, s))
             s1, s2 = scale(*epsilon(e, r), c)
             with open('experiments/{} {} {}.txt'.format(d, c, s), 'a') as f:
