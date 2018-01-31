@@ -325,7 +325,7 @@ class Accuracy(LineGraph):
         ax.plot(xs, [probability_overestimate(x, k, s1, s2) for x in xs], color="red", linewidth=2.0, label="overestimate")
         ax.plot(xs, [probability_baseline(x, k, s1, s2) for x in xs], color="green", linewidth=2.0, label="baseline")
         ax.plot(xs, [probability_optimized(x, k, s1, s2) for x in xs], color="blue", linewidth=2.0, label="optimized")
-        ax.plot(xs, [probability_precise(x, k, s1, s2) for x in xs], color="black", linewidth=2.0, label="optimized")
+        ax.plot(xs, [probability_precise(x, k, s1, s2) for x in xs], color="black", linewidth=2.0, label="precise")
         ax.legend(loc='upper right')
         ax.set_ylim(0, 1)
         ax.set_xlim(0, MAX)
