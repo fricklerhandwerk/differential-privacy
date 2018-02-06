@@ -17,16 +17,22 @@ figure = plt.figure()
 ax = figure.gca(projection="3d")
 
 epsilon = 0.1
-A = Laplace(1/epsilon, 0)
 
 
 def f(x, y):
-    B = Laplace(A.scale, A.loc + x)
-    C = Laplace(B.scale, B.loc + y)
+    A = 1  # == exp(epsilon * 0 / 2), since we fix one query at 0
+    norm_x = 1 / (1 + exp(epsilon * x))
+    B = norm_x * exp(epsilon * x)
+    A_b = A * norm_x
+
+    norm_xy = 1 / (1 + exp(epsilon * (x+y)))
+    C = norm_xy * exp(epsilon * (x + y))
+    A_c = A * norm_xy
+
     # differential probability of largest query being reported as maximal
-    one = log(B.larger(A)/C.larger(A))
+    one = log(B/C)
     # also take into account what happens with the second-largest one in the differential case!
-    two = log(A.larger(B)/A.larger(C))
+    two = log(A_b/A_c)
     return max(abs(one), abs(two))
 
 X = np.arange(-100, 100, 1)
@@ -44,12 +50,12 @@ Z_ = np.vectorize(g)(X)
 ax.plot(X, Y_, zs=Z_, color="red")
 print(max(Z_))
 
+ax.set_zlim(0, 1)
 ax.xaxis.set_major_locator(ticker.MultipleLocator(50))
 ax.yaxis.set_major_locator(ticker.MultipleLocator(5))
-ax.set_zlim(0, 1)
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
 ax.azim = 45
-ax.elev = 15
+ax.elev = 10
 plt.show()
