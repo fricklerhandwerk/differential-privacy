@@ -32,12 +32,6 @@ def ratios(c, monotonic=True):
     }
 
 
-
-def expand(queries):
-    """expand counter to flat list"""
-    return sorted(queries.elements())[::-1]
-
-
 def read_data(data):
     with open('data/{}.json'.format(data)) as f:
         items = json.load(f, object_hook=convert)
