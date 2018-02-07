@@ -21,7 +21,7 @@ class Mode(Enum):
         return list(cls._member_map_)
 
 class Graph(FigCanvas):
-    def __init__(self, parent, drawfunc, lower=0, upper=100, steps=256):
+    def __init__(self, parent, drawfunc, lower=-50, upper=50, steps=256):
         self.figure = Figure()
         super(FigCanvas, self).__init__(parent, -1, self.figure)
         self.axes = self.figure.add_subplot(1, 1, 1)
@@ -73,18 +73,10 @@ class Frame(wx.Frame):
     def create_main_panel(self):
         self.panel = wx.Panel(self)
 
-        self.queries = Graph(
-            self.panel, self.draw_queries,
-            lower=0, upper=200, steps=512)
-        self.difference = Graph(
-            self.panel, self.draw_difference,
-            lower=-100, upper=100)
-        self.differenceCDF = Graph(
-            self.panel, self.draw_differenceCDF,
-            lower=-100, upper=100)
-        self.divergence = Graph(
-            self.panel, self.draw_divergence,
-            lower=0, upper=200)
+        self.queries = Graph(self.panel, self.draw_queries, steps=512)
+        self.difference = Graph(self.panel, self.draw_difference)
+        self.differenceCDF = Graph(self.panel, self.draw_differenceCDF)
+        self.divergence = Graph(self.panel, self.draw_divergence)
 
         self.controls = self.create_controls()
         hbox = wx.BoxSizer(wx.HORIZONTAL)
@@ -124,10 +116,10 @@ class Frame(wx.Frame):
         self.mode = wx.Choice(self.panel, choices=Mode.names())
         self.query_a = wx.SpinCtrl(
             self.panel, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT,
-            min=-1000, max=1000, initial=105)
+            min=-1000, max=1000, initial=0)
         self.query_b = wx.SpinCtrl(
             self.panel, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT,
-            min=-1000, max=1000, initial=100)
+            min=-1000, max=1000, initial=5)
         self.sensitivity = wx.SpinCtrl(
             self.panel, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT,
             min=1, max=100, initial=1)
