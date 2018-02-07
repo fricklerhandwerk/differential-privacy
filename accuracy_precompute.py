@@ -10,6 +10,7 @@ from accuracy import accuracy_optimized
 from algorithms import scale
 from algorithms import epsilon
 from algorithms import factor
+from algorithms import Laplace
 from dataset_accuracy import threshold
 
 
@@ -39,7 +40,9 @@ def expand(queries):
 def read_data(data):
     with open('data/{}.json'.format(data)) as f:
         items = json.load(f, object_hook=convert)
-        return Counter(items.values())
+        counts = Counter(items.values())
+    array = np.loadtxt('data/{}.txt'.format(data), dtype=int)
+    return counts, array
 
 
 def above(queries, T, a):
@@ -53,19 +56,19 @@ def below(queries, T, a):
 def write_alphas(data, start=None, end=None):
     # compute probabilities only for unique tuples with numbers of queries
     # above and below the T+/-alpha range
-    queries = read_data(data)
-    k = max(queries.keys())
+    query_counts, query_array = read_data(data)
+    k = query_array[0]
 
     print("loaded {}, max. value: {}".format(data, k))
 
     for c in cs[start:end]:
-        T = threshold(c, expand(queries))
+        T = threshold(c, query_array)
         print('T:', T, end=' ')
 
         above_below = {}
         for a in range(k):
-            queries_below = below(queries, T, a)
-            queries_above = above(queries, T, a)
+            queries_below = below(query_counts, T, a)
+            queries_above = above(query_counts, T, a)
             key = (len(queries_below.keys()), len(queries_above.keys()))
             above_below[key] = {
                 'alpha': a,
@@ -101,29 +104,58 @@ def convert(d):
     return result
 
 
-def probability_basic(a, k, s1, s2, queries, alphas):
+def accuracy_basic(a, k, s1, s2, *args):
     return probability_precise(a, k, s1, s2)
 
 
+def accuracy_precise(a, k, s1, s2, queries, alphas, T):
+    below = alphas[a]['below']
+    above = alphas[a]['above']
+
+    # just like in the accuracy estimation we measure the probability of a *wrong* answer,
+    # hence True if below, False if above.
+    rs = [True] * len(below) + [False] * len(above)
+    qs = {**below, **above}
+
+    def pred(x):
+        return product([query_above(s2, q, r, x)**n for (r, (q, n)) in zip(rs, qs.items())])
+
+    def state(x):
+        return Laplace(s1, T).pdf(x) * pred(x)
+
+    print("alpha: {}, below: {}, above: {}".format(alpha, len(below), len(above)))
+    return quad(state, 0, queries[0], points=[T])[0]
+
+
+def query_above(scale, loc, is_above, threshold):
+    """Pr(query(scale, loc) => is_above | threshold_value )"""
+    pr_above = 1 - Laplace(scale, loc).cdf(threshold)
+    if is_above:
+        return pr_above
+    else:
+        return 1 - pr_above
+
+
 def write_probability(data, func, start=None, end=None):
-    queries = np.loadtxt('data/{}.txt'.format(data), dtype=int)
-    k = queries[0]
+    query_counts, query_array = read_data(data)
+    k = query_array[0]
     for c in cs[start:end]:
+        T = threshold(c, query_array)
         alphas = read_alphas(data, c).keys()
         total = len(alphas)
 
         for s, r in ratios(c).items():
             print("c: {}, r: {}".format(c, s))
             s1, s2 = scale(*epsilon(e, r), c)
-            with open('experiments/{} {} {}.txt'.format(data, c, s), 'a') as f:
-                last = 1
-                for i, a in enumerate(alphas):
-                    p = func(a, k, s1, s2, queries, alphas)
-                    # catch problems with integration
-                    if p > last or last == 0:
-                        break
-                    else:
-                        last = p
-                    print(total - i, a, p, end='\r')
+            last = 1
+            for i, a in enumerate(alphas):
+                p = func(a, k, s1, s2, query_array, alphas, T)
+                # catch problems with integration
+                if p > last or p < 0:
+                    break
+                else:
+                    last = p
+                print(total - i, a, p, end='\r')
+                with open('experiments/{} {} {}.txt'.format(data, c, s), 'a') as f:
                     print(a, p, file=f)
-                print()
+            print()
