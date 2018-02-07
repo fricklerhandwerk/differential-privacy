@@ -2,6 +2,7 @@
 
 from collections import Counter
 import json
+from math import log
 import numpy as np
 from numpy import product
 from scipy.integrate import quad
@@ -108,7 +109,7 @@ def precise(a, k, s1, s2, queries, alphas, T):
     above = alphas[a]['above']
 
     # IMPORTANT: we *must* compute the probability of a correct response here,
-    # although eventually we want to have the probability of a wrong response.
+    # although eventually we want to have the error probability.
     # the reason is that queries are usually so far away from the threshold that
     # getting a wrong response is incredibly improbable, which in effect produces
     # zeroes instead of *very very* small numbers. and by small I mean so small
@@ -122,7 +123,12 @@ def precise(a, k, s1, s2, queries, alphas, T):
     def state(x):
         return Laplace(s1, T).pdf(x) * pred(x)
 
-    return 1 - quad(state, 0, queries[0], points=[T])[0]
+    # integrate over some sufficiently large quantile of the threshold distribution,
+    # here we take everything except a 2*error part.
+    # bounds of [0, max(queries)] as I had them before will give catastrophically wrong results.
+    error = 1/1e12
+    T_bound = s1 * log(1/error)
+    return 1 - quad(state, T-T_bound, T+T_bound, points=[T])[0]
 
 
 def query_above(scale, loc, is_above, threshold):
@@ -149,7 +155,7 @@ def write_probability(data, func, start=None, end=None):
             for i, a in enumerate(alphas.keys()):
                 p = func(a, k, s1, s2, query_array, alphas, T)
                 # catch problems with integration
-                if p > last or p <= 0:
+                if p >= last or p <= 0:
                     break
                 else:
                     last = p
