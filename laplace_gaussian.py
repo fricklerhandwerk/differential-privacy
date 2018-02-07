@@ -124,12 +124,12 @@ class Frame(wx.Frame):
             self.panel, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT,
             min=1, max=100, initial=1)
 
-        self.label_epsilon = wx.StaticText(self.panel, label="Epsilon (1/1000)")
+        self.label_epsilon = wx.StaticText(self.panel, label="ε (1/1000)")
         self.slider_epsilon = wx.Slider(
             self.panel, minValue=1, maxValue=1000, value=100,
             style=wx.SL_AUTOTICKS | wx.SL_LABELS)
         self.slider_epsilon.SetTickFreq(1)
-        self.label_delta = wx.StaticText(self.panel, label="Delta (1/1000)")
+        self.label_delta = wx.StaticText(self.panel, label="δ (1/1000)")
         self.slider_delta = wx.Slider(
             self.panel, minValue=1, maxValue=1000, value=10,
             style=wx.SL_AUTOTICKS | wx.SL_LABELS)
@@ -146,11 +146,11 @@ class Frame(wx.Frame):
         controls = wx.BoxSizer(wx.VERTICAL)
         flags = wx.EXPAND | wx.TOP | wx.BOTTOM
         controls.Add(self.mode)
-        controls.Add(wx.StaticText(self.panel, label="Query A"))
+        controls.Add(wx.StaticText(self.panel, label="q(D)"))
         controls.Add(self.query_a, 0, border=3, flag=flags)
-        controls.Add(wx.StaticText(self.panel, label="Query B"))
+        controls.Add(wx.StaticText(self.panel, label="q(D')"))
         controls.Add(self.query_b, 0, border=3, flag=flags)
-        controls.Add(wx.StaticText(self.panel, label="Sensitivity"))
+        controls.Add(wx.StaticText(self.panel, label="Δq"))
         controls.Add(self.sensitivity, 0, border=3, flag=flags)
         controls.Add(self.label_epsilon, 0, flag=flags)
         controls.Add(self.slider_epsilon, 0, border=3, flag=flags)
