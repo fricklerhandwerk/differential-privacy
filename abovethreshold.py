@@ -155,7 +155,7 @@ class Model(object):
         above = self.above(alpha)
 
         rs = [False] * len(below) + [True] * len(above)
-        qs = below + above
+        qs = below.tolist() + above.tolist()
 
         def pred(x):
             return product([self.pr_single_response(r, q, x) for (r, q) in zip(rs, qs)])
