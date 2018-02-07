@@ -23,11 +23,11 @@ def f(x, y):
     A = 1  # == exp(epsilon * 0 / 2), since we fix one query at 0
     norm_x = 1 / (1 + exp(epsilon * x))
     B = norm_x * exp(epsilon * x)
-    A_b = A * norm_x
+    A_b = norm_x * A
 
     norm_xy = 1 / (1 + exp(epsilon * (x+y)))
     C = norm_xy * exp(epsilon * (x + y))
-    A_c = A * norm_xy
+    A_c = norm_xy * A
 
     # differential probability of largest query being reported as maximal
     one = log(B/C)
