@@ -172,9 +172,9 @@ class Frame(wx.Frame):
         a, b = self.get_distributions()
         xs = self.queries.abscissa
         ys = [a.pdf(x) for x in xs]
-        ax.plot(xs, ys, color="blue", linewidth=2.0, linestyle="-", label="Pr(A)")
+        ax.plot(xs, ys, color="blue", linewidth=2.0, linestyle="-", label="Pr(q(D) = x)")
         ys = [b.pdf(x) for x in xs]
-        ax.plot(xs, ys, color="green", linewidth=2.0, linestyle="-", label="Pr(B)")
+        ax.plot(xs, ys, color="green", linewidth=2.0, linestyle="-", label="Pr(q(D') = x)")
         ax.legend(loc='upper right')
 
         self.queries.figure.suptitle("Query distributions")
@@ -188,7 +188,7 @@ class Frame(wx.Frame):
         xs = self.difference.abscissa
         f = a.difference(b)
         ys = [f(x) for x in xs]
-        ax.plot(xs, ys, color="red", linewidth=2.0, linestyle="-", label="Pr(A-B)")
+        ax.plot(xs, ys, color="red", linewidth=2.0, linestyle="-", label="Pr(q(D)-q(D') = x)")
         ax.legend(loc='upper right')
 
         self.difference.figure.suptitle("PDF of difference between queries")
@@ -202,7 +202,7 @@ class Frame(wx.Frame):
         xs = self.differenceCDF.abscissa
         f = a.differenceCDF(b)
         ys = [f(x) for x in xs]
-        ax.plot(xs, ys, color="red", linewidth=2.0, linestyle="-", label="CDF Pr(A-B)")
+        ax.plot(xs, ys, color="red", linewidth=2.0, linestyle="-", label="Pr(q(D)-q(D') ≤ x)")
         ax.legend(loc='upper right')
 
         self.differenceCDF.figure.suptitle("CDF of difference between queries")
@@ -251,7 +251,7 @@ class Frame(wx.Frame):
 
     def calculate_a_greater_b(self):
         a, b = self.get_distributions()
-        self.a_greater_b.SetLabel("Pr(A > B) = {:.3f}".format(a.larger(b)))
+        self.a_greater_b.SetLabel("Pr(q(D) > q(D')) = {:.3f}".format(a.larger(b)))
 
     def on_parameter_change(self, event):
         self.draw_figure()
