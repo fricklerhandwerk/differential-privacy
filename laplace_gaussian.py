@@ -225,7 +225,7 @@ class Frame(wx.Frame):
         epsilon = self.slider_epsilon.GetValue() / 1000
         ax.axhline(y=epsilon, color="green")
 
-        self.divergence.figure.suptitle("Pointwise divergence ivergence of queries")
+        self.divergence.figure.suptitle("Pointwise divergence of queries")
         self.divergence.draw()
 
     def get_distributions(self):
