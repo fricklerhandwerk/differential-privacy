@@ -3,7 +3,8 @@
 from collections import Counter
 import json
 import numpy as np
-from scipy.integrate import IntegrationWarning
+from numpy import product
+from scipy.integrate import quad
 
 from accuracy import probability_precise
 from accuracy import accuracy_optimized
@@ -104,11 +105,11 @@ def convert(d):
     return result
 
 
-def accuracy_basic(a, k, s1, s2, *args):
+def basic(a, k, s1, s2, *args):
     return probability_precise(a, k, s1, s2)
 
 
-def accuracy_precise(a, k, s1, s2, queries, alphas, T):
+def precise(a, k, s1, s2, queries, alphas, T):
     below = alphas[a]['below']
     above = alphas[a]['above']
 
@@ -123,7 +124,6 @@ def accuracy_precise(a, k, s1, s2, queries, alphas, T):
     def state(x):
         return Laplace(s1, T).pdf(x) * pred(x)
 
-    print("alpha: {}, below: {}, above: {}".format(alpha, len(below), len(above)))
     return quad(state, 0, queries[0], points=[T])[0]
 
 
@@ -141,14 +141,14 @@ def write_probability(data, func, start=None, end=None):
     k = query_array[0]
     for c in cs[start:end]:
         T = threshold(c, query_array)
-        alphas = read_alphas(data, c).keys()
+        alphas = read_alphas(data, c)
         total = len(alphas)
 
         for s, r in ratios(c).items():
             print("c: {}, r: {}".format(c, s))
             s1, s2 = scale(*epsilon(e, r), c)
             last = 1
-            for i, a in enumerate(alphas):
+            for i, a in enumerate(alphas.keys()):
                 p = func(a, k, s1, s2, query_array, alphas, T)
                 # catch problems with integration
                 if p > last or p < 0:
@@ -156,6 +156,6 @@ def write_probability(data, func, start=None, end=None):
                 else:
                     last = p
                 print(total - i, a, p, end='\r')
-                with open('experiments/{} {} {}.txt'.format(data, c, s), 'a') as f:
+                with open('experiments/{}-{} {} {}.txt'.format(data, func.__name__, c, s), 'a') as f:
                     print(a, p, file=f)
             print()
