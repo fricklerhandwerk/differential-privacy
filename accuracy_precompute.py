@@ -155,7 +155,7 @@ def write_probability(data, func, start=None, end=None):
             for i, a in enumerate(alphas.keys()):
                 p = func(a, k, s1, s2, query_array, alphas, T)
                 # catch problems with integration
-                if p > last or p < 0:
+                if p > last or p <= 0:
                     break
                 else:
                     last = p
