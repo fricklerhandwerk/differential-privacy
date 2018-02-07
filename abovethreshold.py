@@ -140,8 +140,8 @@ class Model(object):
         min_above = min(above)
 
         def pred(x):
-            approx_below = self.pr_single_response(True, max_below, x)**len(below)
-            approx_above = self.pr_single_response(False, min_above, x)**len(above)
+            approx_below = self.pr_single_response(False, max_below, x)**len(below)
+            approx_above = self.pr_single_response(True, min_above, x)**len(above)
             return approx_below * approx_above
 
         def state(x):
@@ -154,9 +154,10 @@ class Model(object):
         below = self.below(alpha)
         above = self.above(alpha)
 
+        rs = [False] * len(below) + [True] * len(above)
+        qs = below + above
+
         def pred(x):
-            rs = [True] * len(below) + [False] * len(above)
-            qs = below + above
             return product([self.pr_single_response(r, q, x) for (r, q) in zip(rs, qs)])
 
         def state(x):

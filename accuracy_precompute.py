@@ -113,9 +113,13 @@ def precise(a, k, s1, s2, queries, alphas, T):
     below = alphas[a]['below']
     above = alphas[a]['above']
 
-    # just like in the accuracy estimation we measure the probability of a *wrong* answer,
-    # hence True if below, False if above.
-    rs = [True] * len(below) + [False] * len(above)
+    # IMPORTANT: we *must* compute the probability of a correct response here,
+    # although eventually we want to have the probability of a wrong response.
+    # the reason is that queries are usually so far away from the threshold that
+    # getting a wrong response is incredibly improbable, which in effect produces
+    # zeroes instead of *very very* small numbers. and by small I mean so small
+    # that even using gmpy2 with precision 10000 doesn't capture them properly.
+    rs = [False] * len(below) + [True] * len(above)
     qs = {**below, **above}
 
     def pred(x):
@@ -124,7 +128,7 @@ def precise(a, k, s1, s2, queries, alphas, T):
     def state(x):
         return Laplace(s1, T).pdf(x) * pred(x)
 
-    return quad(state, 0, queries[0], points=[T])[0]
+    return 1 - quad(state, 0, queries[0], points=[T])[0]
 
 
 def query_above(scale, loc, is_above, threshold):
