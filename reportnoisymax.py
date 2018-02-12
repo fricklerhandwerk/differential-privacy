@@ -47,9 +47,9 @@ print(max(Z_))
 ax.xaxis.set_major_locator(ticker.MultipleLocator(50))
 ax.yaxis.set_major_locator(ticker.MultipleLocator(5))
 ax.set_zlim(0, 1)
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
-ax.set_zlabel('Z')
+ax.set_xlabel('x')
+ax.set_ylabel('y')
+ax.set_zlabel(r'$\mathcal{L}^{x}_{A \| B}$')
 ax.azim = 45
 ax.elev = 15
 plt.show()
