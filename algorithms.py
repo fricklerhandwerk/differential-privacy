@@ -6,6 +6,7 @@ from math import erf
 from math import exp
 from math import pi
 from math import sqrt
+from math import floor
 from scipy.stats import laplace
 from scipy.stats import norm
 
@@ -160,6 +161,23 @@ class Gaussian(Distribution):
 
     def normalCDF(self, x, b, m):
         return (1 + erf((x-m) / (b*sqrt(2)))) / 2
+
+
+class Exponential(Distribution):
+    def pdf(self, x):
+        b = self.scale
+        m = self.loc
+        N = (1 - exp(-b)) / 2
+        return N * exp(-b * abs(floor(x - m)))
+
+    def cdf(self, x):
+        pass
+
+    def difference(self, other):
+        pass
+
+    def differenceCDF(self, other):
+        pass
 
 
 def sgn(x):

@@ -15,6 +15,7 @@ from algorithms import *
 class Mode(Enum):
     Laplace = Laplace
     Gaussian = Gaussian
+    Exponential = Exponential
 
     @classmethod
     def names(cls):
@@ -241,13 +242,18 @@ class Frame(wx.Frame):
             self.b = Laplace(sensitivity/epsilon, self.query_b.GetValue())
             self.slider_delta.Enable(False)
             self.label_delta.Enable(False)
-        else:
+        elif mode == Mode.Gaussian:
             delta = self.slider_delta.GetValue() / 1000
             c = sqrt(2*log(1.25/delta))
             self.a = Gaussian(c*sensitivity/epsilon, self.query_a.GetValue())
             self.b = Gaussian(c*sensitivity/epsilon, self.query_b.GetValue())
             self.slider_delta.Enable(True)
             self.label_delta.Enable(True)
+        else:
+            self.a = Exponential(epsilon/sensitivity, self.query_a.GetValue())
+            self.b = Exponential(epsilon/sensitivity, self.query_b.GetValue())
+            self.slider_delta.Enable(False)
+            self.label_delta.Enable(False)
 
     def calculate_a_greater_b(self):
         a, b = self.get_distributions()
