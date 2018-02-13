@@ -495,16 +495,17 @@ class Frame(wx.Frame):
         self.monotonic = wx.CheckBox(panel)
         self.monotonic.SetValue(self.model.monotonic)
 
-        sizer = wx.FlexGridSizer(rows=5, cols=2, gap=(5, 5))
         grid = [
-            threshold_label, self.threshold,
-            epsilon1_label, self.epsilon1,
-            epsilon2_label, self.epsilon2,
-            sensitivity_label, self.sensitivity,
-            monotonic_label, self.monotonic,
+            [threshold_label, self.threshold],
+            [epsilon1_label, self.epsilon1],
+            [epsilon2_label, self.epsilon2],
+            [sensitivity_label, self.sensitivity],
+            [monotonic_label, self.monotonic],
         ]
-        for i in grid:
-            sizer.Add(i, flag=wx.EXPAND)
+        sizer = wx.FlexGridSizer(rows=len(grid), cols=len(grid[0]), gap=(5, 5))
+        for line in grid:
+            for item in line:
+                sizer.Add(item, flag=wx.EXPAND)
 
         self.Bind(wx.EVT_SPINCTRL, self.on_threshold, self.threshold)
         self.Bind(wx.EVT_TEXT_ENTER, on_spin_enter, self.threshold)

@@ -9,6 +9,7 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigCanvas
 from matplotlib.figure import Figure
 
 from math import log
+from scipy.stats import norm
 
 from algorithms import *
 
@@ -51,6 +52,7 @@ class Frame(wx.Frame):
         self.create_menu()
         self.create_main_panel()
 
+        self.update_model()
         self.draw_figure()
 
     def create_menu(self):
@@ -136,10 +138,18 @@ class Frame(wx.Frame):
             style=wx.SL_AUTOTICKS | wx.SL_LABELS)
         self.slider_delta.SetTickFreq(1)
         self.a_greater_b = wx.StaticText(self.panel)
+        self.label_monotonic = wx.StaticText(self.panel, label="Monotonic")
+        self.checkbox_monotonic = wx.CheckBox(self.panel)
+        self.checkbox_monotonic.SetValue(True)
+        self.label_quantile = wx.StaticText(self.panel, label="Display (δ - 1) quantile")
+        self.checkbox_quantile = wx.CheckBox(self.panel)
+        self.checkbox_quantile.SetValue(True)
 
         self.Bind(wx.EVT_CHOICE, self.on_parameter_change, self.mode)
         self.Bind(wx.EVT_COMMAND_SCROLL_THUMBTRACK, self.on_parameter_change, self.slider_epsilon)
         self.Bind(wx.EVT_COMMAND_SCROLL_THUMBTRACK, self.on_parameter_change, self.slider_delta)
+        self.Bind(wx.EVT_CHECKBOX, self.on_parameter_change, self.checkbox_monotonic)
+        self.Bind(wx.EVT_CHECKBOX, self.on_parameter_change, self.checkbox_quantile)
         for widget in [self.query_a, self.query_b, self.sensitivity]:
             self.Bind(wx.EVT_SPINCTRL, self.on_parameter_change, widget)
             self.Bind(wx.EVT_TEXT_ENTER, on_bounds_enter, widget)
@@ -153,15 +163,22 @@ class Frame(wx.Frame):
         controls.Add(self.query_b, 0, border=3, flag=flags)
         controls.Add(wx.StaticText(self.panel, label="Δq"))
         controls.Add(self.sensitivity, 0, border=3, flag=flags)
+        monotonic = wx.BoxSizer(wx.HORIZONTAL)
+        monotonic.Add(self.checkbox_monotonic, 0)
+        monotonic.Add(self.label_monotonic, 0, border=5, flag=wx.EXPAND | wx.LEFT)
+        controls.Add(monotonic, 0, flag=flags)
         controls.Add(self.label_epsilon, 0, flag=flags)
         controls.Add(self.slider_epsilon, 0, border=3, flag=flags)
         controls.Add(self.label_delta, 0, flag=flags)
         controls.Add(self.slider_delta, 0, border=3, flag=flags)
+        quantile = wx.BoxSizer(wx.HORIZONTAL)
+        quantile.Add(self.checkbox_quantile, 0)
+        quantile.Add(self.label_quantile, 0, border=5, flag=wx.EXPAND | wx.LEFT)
+        controls.Add(quantile, 0, flag=flags)
         controls.Add(self.a_greater_b, 0, border=5, flag=flags)
         return controls
 
     def draw_figure(self):
-        self.update_model()
         for a in [self.queries, self.difference, self.differenceCDF, self.divergence]:
             a.plot()
         self.calculate_a_greater_b()
@@ -225,7 +242,11 @@ class Frame(wx.Frame):
         ax.plot(xs, ys, color="red", linewidth=2.0, linestyle="-")
         epsilon = self.slider_epsilon.GetValue() / 1000
         ax.axhline(y=epsilon, color="green")
+        if self.checkbox_quantile.IsEnabled() and self.checkbox_quantile.GetValue():
+            ax.axvline(x=self.bot_quantile, color="blue")
+            ax.axvline(x=self.top_quantile, color="blue")
 
+        ax.set_xlim(self.divergence.lower.GetValue(), self.divergence.upper.GetValue())
         self.divergence.figure.suptitle("Pointwise divergence of queries")
         self.divergence.draw()
 
@@ -236,22 +257,27 @@ class Frame(wx.Frame):
         mode = Mode[self.mode.GetString(self.mode.CurrentSelection)]
         sensitivity = self.sensitivity.GetValue()
         epsilon = self.slider_epsilon.GetValue() / 1000
-
+        delta = self.slider_delta.GetValue() / 1000
+        a = self.query_a.GetValue()
+        b = self.query_b.GetValue()
         if mode == Mode.Laplace:
-            self.a = Laplace(sensitivity/epsilon, self.query_a.GetValue())
-            self.b = Laplace(sensitivity/epsilon, self.query_b.GetValue())
+            self.a = Laplace(sensitivity/epsilon, a)
+            self.b = Laplace(sensitivity/epsilon, b)
+            self.checkbox_quantile.Enable(False)
             self.slider_delta.Enable(False)
             self.label_delta.Enable(False)
         elif mode == Mode.Gaussian:
-            delta = self.slider_delta.GetValue() / 1000
             c = sqrt(2*log(1.25/delta))
-            self.a = Gaussian(c*sensitivity/epsilon, self.query_a.GetValue())
-            self.b = Gaussian(c*sensitivity/epsilon, self.query_b.GetValue())
+            self.a = Gaussian(c*sensitivity/epsilon, a)
+            self.b = Gaussian(c*sensitivity/epsilon, b)
+            self.bot_quantile, self.top_quantile = norm.interval(1 - delta, a, c*sensitivity/epsilon)
+            self.checkbox_quantile.Enable(True)
             self.slider_delta.Enable(True)
             self.label_delta.Enable(True)
         else:
-            self.a = Exponential(epsilon/sensitivity, self.query_a.GetValue())
-            self.b = Exponential(epsilon/sensitivity, self.query_b.GetValue())
+            self.a = Exponential(epsilon/sensitivity, a)
+            self.b = Exponential(epsilon/sensitivity, b)
+            self.checkbox_quantile.Enable(False)
             self.slider_delta.Enable(False)
             self.label_delta.Enable(False)
 
@@ -260,6 +286,7 @@ class Frame(wx.Frame):
         self.a_greater_b.SetLabel("Pr(q(D) > q(D')) = {:.3f}".format(a.larger(b)))
 
     def on_parameter_change(self, event):
+        self.update_model()
         self.draw_figure()
 
     def on_save_plot(self, event):
