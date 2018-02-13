@@ -57,7 +57,12 @@ class Model(object):
 
 
     def random_response(self):
-        return [self.randbool() for _ in range(self.length)]
+        # prevent responses with zero count
+        while True:
+            response = [self.randbool() for _ in range(self.length)]
+            if any(response):
+                break
+        return response
 
     def random_queries(self):
         return [self.randint() for _ in range(self.length)]
@@ -345,6 +350,7 @@ class Frame(wx.Frame):
         self.model = Model(100, e1=0.1, e2=0.2)
         self.create_view()
         self.model.update()
+        self.secure_response_buttons()
         self.draw()
 
     def create_menu(self):
@@ -429,27 +435,27 @@ class Frame(wx.Frame):
         for i in self.model.shift_vector:
             self.create_shift_element(panel, i)
 
-        plus = wx.Button(panel, label="+", size=self.element_size)
-        minus = wx.Button(panel, label="-", size=self.element_size)
+        self.plus = wx.Button(panel, label="+", size=self.element_size)
+        self.minus = wx.Button(panel, label="-", size=self.element_size)
 
         self.Bind(wx.EVT_BUTTON, self.on_random_response, response_button)
         self.Bind(wx.EVT_BUTTON, self.on_random_queries, queries_button)
         self.Bind(wx.EVT_SPINCTRL, self.on_set_shift_vector, shift_control)
         self.Bind(wx.EVT_TEXT_ENTER, on_spin_enter, shift_control)
-        self.Bind(wx.EVT_BUTTON, self.on_plus, plus)
-        self.Bind(wx.EVT_BUTTON, self.on_minus, minus)
+        self.Bind(wx.EVT_BUTTON, self.on_plus, self.plus)
+        self.Bind(wx.EVT_BUTTON, self.on_minus, self.minus)
 
         sizer = wx.FlexGridSizer(rows=3, cols=4, gap=(5, 5))
         sizer.AddGrowableCol(2)
         sizer.Add(response_label, flag=wx.EXPAND)
         sizer.Add(response_button)
         sizer.Add(self.response_vector, flag=wx.EXPAND)
-        sizer.Add(plus)
+        sizer.Add(self.plus)
 
         sizer.Add(queries_label, flag=wx.EXPAND)
         sizer.Add(queries_button)
         sizer.Add(self.queries_vector, flag=wx.EXPAND)
-        sizer.Add(minus)
+        sizer.Add(self.minus)
 
         sizer.Add(shift_label, flag=wx.EXPAND)
         sizer.Add(shift_control)
@@ -680,7 +686,23 @@ class Frame(wx.Frame):
 
     def on_parameter_change(self):
         self.model.update()
+        self.secure_response_buttons()
         self.draw()
+
+    def secure_response_buttons(self):
+        """
+        prevent the last true response from being switched to false or deleted.
+        otherwise this induces division by zero
+        """
+        if self.model.count == 1:
+            [button] = [x for x in self.response_vector.Children if x.Window.Label == "T"]
+            button.Window.Enable(False)
+            if [x for x in self.response_vector.Children][-1].Window.Label == "T":
+                self.minus.Enable(False)
+        else:
+            for button in self.response_vector.Children:
+                button.Window.Enable(True)
+            self.minus.Enable(True)
 
     def on_exit(self, event):
         self.Destroy()
