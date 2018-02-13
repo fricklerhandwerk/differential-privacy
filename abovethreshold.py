@@ -115,14 +115,18 @@ class Model(object):
         assert len(self.shift_vector) == self.length
 
     def get_probability(self, response, queries):
-        vector_pred = self.response_predicate(response, queries)
-        return self.threshold_state >= vector_pred
 
-    def response_predicate(self, rs, qs):
-        """Pr(qs => rs | threshold_state)"""
         def pred(x):
-            return product([self.pr_single_response(r, q, x) for (r, q) in zip(rs, qs)])
-        return Predicate(pred, R)
+            return product([self.pr_single_response(r, q, x)
+                            for (r, q) in zip(response, queries)])
+
+        def state(x):
+            return self.threshold_state(x) * pred(x)
+
+        error = 1/1e12
+        T_bound = self.threshold_scale * log(1/error)
+
+        return quad(state, self.threshold-T_bound, self.threshold+T_bound, points=[self.threshold])[0]
 
     def pr_single_response(self, is_above, query, threshold):
         """Pr(query => is_above | threshold_value )"""
