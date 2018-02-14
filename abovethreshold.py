@@ -41,6 +41,7 @@ class Model(object):
         self.response = self.random_response()
         self.queries = self.random_queries()
         self.shift_vector = self.new_shift_vector()
+        self.count = self.get_count()
 
         """probability of getting `response`, given `queries` and `threshold`"""
         self.pr_response = 0
@@ -113,6 +114,9 @@ class Model(object):
         self.length = len(self.response)
         assert len(self.queries) == self.length
         assert len(self.shift_vector) == self.length
+
+    def get_count(self):
+        return len([x for x in self.response if x])
 
     def get_probability(self, response, queries):
 
@@ -207,10 +211,6 @@ class Model(object):
     @property
     def query_scale(self):
         return (self.factor*self.count*self.sensitivity) / self.epsilon2
-
-    @property
-    def count(self):
-        return len([x for x in self.response if x])
 
     @property
     def factor(self):
@@ -355,7 +355,6 @@ class Frame(wx.Frame):
         self.model = Model(100, e1=0.1, e2=0.2)
         self.create_view()
         self.model.update()
-        self.secure_response_buttons()
         self.draw()
 
     def create_menu(self):
@@ -501,6 +500,13 @@ class Frame(wx.Frame):
             style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=self.spinctrl_size,
             min=0, max=100, initial=self.model.sensitivity)
 
+        count_label = wx.StaticText(
+            panel, label="c", style=wx.ALIGN_RIGHT)
+        self.count = wx.SpinCtrl(
+            panel,
+            style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=self.spinctrl_size,
+            min=1, max=100, initial=self.model.count)
+
         monotonic_label = wx.StaticText(
             panel, label="Monotonic", style=wx.ALIGN_RIGHT)
         self.monotonic = wx.CheckBox(panel)
@@ -511,6 +517,7 @@ class Frame(wx.Frame):
             [epsilon1_label, self.epsilon1],
             [epsilon2_label, self.epsilon2],
             [sensitivity_label, self.sensitivity],
+            [count_label, self.count],
             [monotonic_label, self.monotonic],
         ]
         sizer = wx.FlexGridSizer(rows=len(grid), cols=len(grid[0]), gap=(5, 5))
@@ -524,6 +531,8 @@ class Frame(wx.Frame):
         self.Bind(fs.EVT_FLOATSPIN, self.on_epsilon2, self.epsilon2)
         self.Bind(wx.EVT_SPINCTRL, self.on_sensitivity, self.sensitivity)
         self.Bind(wx.EVT_TEXT_ENTER, on_spin_enter, self.sensitivity)
+        self.Bind(wx.EVT_SPINCTRL, self.on_count, self.count)
+        self.Bind(wx.EVT_TEXT_ENTER, on_spin_enter, self.count)
         self.Bind(wx.EVT_CHECKBOX, self.on_monotonic, self.monotonic)
 
         panel.SetSizer(sizer)
@@ -628,6 +637,10 @@ class Frame(wx.Frame):
         self.model.sensitivity = event.GetEventObject().GetValue()
         self.on_parameter_change()
 
+    def on_count(self, event):
+        self.model.count = event.GetEventObject().GetValue()
+        self.on_parameter_change()
+
     def on_monotonic(self, event):
         self.model.monotonic = event.GetEventObject().GetValue()
         self.on_parameter_change()
@@ -691,23 +704,7 @@ class Frame(wx.Frame):
 
     def on_parameter_change(self):
         self.model.update()
-        self.secure_response_buttons()
         self.draw()
-
-    def secure_response_buttons(self):
-        """
-        prevent the last true response from being switched to false or deleted.
-        otherwise this induces division by zero
-        """
-        if self.model.count == 1:
-            [button] = [x for x in self.response_vector.Children if x.Window.Label == "T"]
-            button.Window.Enable(False)
-            if [x for x in self.response_vector.Children][-1].Window.Label == "T":
-                self.minus.Enable(False)
-        else:
-            for button in self.response_vector.Children:
-                button.Window.Enable(True)
-            self.minus.Enable(True)
 
     def on_exit(self, event):
         self.Destroy()
