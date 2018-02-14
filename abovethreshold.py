@@ -239,7 +239,7 @@ class StaticBox(wx.StaticBox):
 class LineGraph(FigCanvas):
     def __init__(self, parent, model, lower=0, upper=100, step=1):
         self.parent = parent
-        self.figure = Figure()
+        self.figure = Figure(figsize=(5,3))
         self.axes = self.figure.add_subplot(1, 1, 1)
         super(FigCanvas, self).__init__(parent, wx.ID_ANY, self.figure)
         self.model = model
@@ -305,14 +305,15 @@ class Probabilities(BarGraph):
         zs = self.model.pr_shifted_items
         for x, y, z in zip(xs, ys, zs):
             if y > z:
-                ax.bar(x, y, color="blue")
-                ax.bar(x, z, color="red")
+                original = ax.bar(x, y, color="blue")
+                shifted = ax.bar(x, z, color="red")
             else:
-                ax.bar(x, z, color="red")
-                ax.bar(x, y, color="blue")
+                shifted = ax.bar(x, z, color="red")
+                original = ax.bar(x, y, color="blue")
 
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax.set_ylim(0,1)
+        ax.legend((original[0], shifted[0]), ("original", "shifted"), loc='upper right')
         self.figure.suptitle("Probabilities of individual responses")
         self.draw()
 
@@ -336,7 +337,7 @@ class Accuracy(LineGraph):
         ax.legend(loc='upper right')
         ax.set_ylim(0, 1)
         ax.set_xlim(0, MAX)
-        self.figure.suptitle("")
+        self.figure.suptitle("Accuracy estimation")
         self.draw
 
 
@@ -494,7 +495,7 @@ class Frame(wx.Frame):
             increment=0.01, digits=3, size=self.spinctrl_size)
 
         sensitivity_label = wx.StaticText(
-            panel, label="Δf", style=wx.ALIGN_RIGHT)
+            panel, label="Δ", style=wx.ALIGN_RIGHT)
         self.sensitivity = wx.SpinCtrl(
             panel,
             style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=self.spinctrl_size,
@@ -575,7 +576,7 @@ class Frame(wx.Frame):
         pr_shifted_label = wx.StaticText(
             panel, label="ℙ(response')", style=wx.ALIGN_RIGHT)
         pr_diff_label = wx.StaticText(
-            panel, label="𝔻ℙ", style=wx.ALIGN_RIGHT)
+            panel, label="privacy loss", style=wx.ALIGN_RIGHT)
         pr_correct_label = wx.StaticText(
             panel, label="ℙ(correct)", style=wx.ALIGN_RIGHT)
 
@@ -587,8 +588,8 @@ class Frame(wx.Frame):
         grid = [
             [pr_response_label, self.pr_response],
             [pr_shifted_label, self.pr_shifted],
-            [pr_diff_label, self.pr_diff],
             [pr_correct_label, self.pr_correct],
+            [pr_diff_label, self.pr_diff],
         ]
         sizer = wx.FlexGridSizer(rows=len(grid), cols=len(grid[0]), gap=(5, 5))
         for line in grid:
