@@ -5,15 +5,15 @@ import numpy as np
 from numpy import product
 from algorithms import *
 
-epsilon1 = 0.1
-epsilon2 = 0.2
+epsilon1 = 0.05
+epsilon2 = 0.05
 k = 1
 
 threshold = Laplace(1/epsilon1, loc=0)
 
 def pr_query_response(is_above, query, threshold):
     """Pr(query => is_above | threshold)"""
-    pr_below = Laplace(2*k/epsilon2, loc=query).cdf(threshold)
+    pr_below = Laplace(k/epsilon2, loc=query).cdf(threshold)
     if not is_above:
         return pr_below
     else:
@@ -36,18 +36,17 @@ def get_pr_correct(x, y):
     return threshold.state >= pr_correct_response
 
 
-figure = plt.figure()
+figure = plt.figure(figsize=(5,3))
 ax = figure.gca(projection="3d")
 
 X = np.r_[-30:-11:4, -10:-3:1, -2:2:0.2, 3:10:1, 11:30:4]
 Y = np.r_[-30:-11:4, -10:-3:1, -2:2:0.2, 3:10:1, 11:30:4]
-print("number of values to compute:", len(X)**2)
+print("number of values to compute:", len(X)**2, "- please wait...")
 X, Y = np.meshgrid(X, Y)
 Z = np.vectorize(get_pr_correct)(X, Y)
 ax.plot_surface(X, Y, Z, cmap=colormap.viridis, linewidth=0, antialiased=False)
-
-
-ax.set_zlim(0, 1)
+plt.title(r"$\epsilon$ = {:.1f}, k = {}".format(epsilon1 + epsilon2, k))
+ax.set_zlim(0, 0.1)
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
