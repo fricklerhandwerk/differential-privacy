@@ -51,4 +51,6 @@ ax.set_zlim(0, 1)
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
+ax.azim = -10
+ax.elev = 45
 plt.show()
