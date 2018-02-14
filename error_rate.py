@@ -13,7 +13,7 @@ threshold = Laplace(1/epsilon1, loc=0)
 
 def pr_query_response(is_above, query, threshold):
     """Pr(query => is_above | threshold)"""
-    pr_below = Laplace(k/epsilon2, loc=query).cdf(threshold)
+    pr_below = Laplace(2*k/epsilon2, loc=query).cdf(threshold)
     if not is_above:
         return pr_below
     else:
