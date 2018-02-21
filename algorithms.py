@@ -2,10 +2,7 @@
 
 from efprob.dc import *
 from math import copysign
-from math import erf
 from math import exp
-from math import pi
-from math import sqrt
 from math import floor
 from scipy.stats import laplace
 from scipy.stats import norm
@@ -68,6 +65,9 @@ class Distribution(object):
     def __call__(self, x):
         return self.state(x)
 
+    def larger(self, other):
+        return 1 - self.differenceCDF(other)(0)
+
     @property
     def state(self):
         return State.fromfun(self.pdf, R)
@@ -77,16 +77,10 @@ class Laplace(Distribution):
     """Laplace distribution"""
 
     def pdf(self, x):
-        b = self.scale
-        m = self.loc
-        return exp(-abs(x-m)/b) / (2*b)
+        return laplace.pdf(x, scale=self.scale, loc=self.loc)
 
     def cdf(self, x):
-        b = self.scale
-        m = self.loc
-        t = abs(x - m)
-        s = sgn(x - m)
-        return (-s * exp(-t/b) + s + 1) / 2
+        return laplace.cdf(x, scale=self.scale, loc=self.loc)
 
     def difference(self, other):
         """difference of two Laplace distributions"""
@@ -124,24 +118,21 @@ class Laplace(Distribution):
 
         return diffCDF
 
-    def larger(self, other):
-        return 1 - self.differenceCDF(other)(0)
-
 
 class Gaussian(Distribution):
     """Gaussian distribution"""
 
     def pdf(self, x):
-        return self.normalPDF(x, self.scale, self.loc)
+        return norm.pdf(x, scale=self.scale, loc=self.loc)
 
     def cdf(self, x):
-        return self.normalCDF(x, self.scale, self.loc)
+        return norm.cdf(x, scale=self.scale, loc=self.loc)
 
     def difference(self, other):
         def diff(x):
             b = self.scale**2 + other.scale**2
             m = self.loc - other.loc
-            return self.normalPDF(x, b, m)
+            return norm.pdf(x, scale=b, loc=m)
 
         return diff
 
@@ -149,18 +140,9 @@ class Gaussian(Distribution):
         def diffCDF(x):
             b = self.scale**2 + other.scale**2
             m = self.loc - other.loc
-            return self.normalCDF(x, b, m)
+            return norm.cdf(x, scale=b, loc=m)
 
         return diffCDF
-
-    def larger(self, other):
-        return 1 - self.differenceCDF(other)(0)
-
-    def normalPDF(self, x, b, m):
-        return exp((-(x-m)**2)/(2*b**2))/sqrt(2*pi*b**2)
-
-    def normalCDF(self, x, b, m):
-        return (1 + erf((x-m) / (b*sqrt(2)))) / 2
 
 
 class Exponential(Distribution):
