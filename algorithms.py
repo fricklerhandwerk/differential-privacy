@@ -8,7 +8,7 @@ from scipy.stats import laplace
 from scipy.stats import norm
 
 
-def epsilon(e, ratio):
+def epsilon(e, ratio=1):
     e1 = e/(1+ratio)
     e2 = e - e1
     return e1, e2
@@ -164,29 +164,3 @@ class Exponential(Distribution):
 
 def sgn(x):
     return copysign(1, x)
-
-
-def plot(states, preargs=(), interval=None,
-         postargs=(), steps=512, block=True, title=None):
-    fig, ax = plt.subplots(sharex=True, sharey=True, figsize=(10, 5))
-    for s in states:
-        axis = len(preargs)
-        if interval is None:
-            interval = s.dom[axis]
-        if interval[1] < interval[0]:
-            raise ValueError("Empty interval")
-        if math.isinf(interval[0]) or math.isinf(interval[1]):
-            raise ValueError("Unbounded interval")
-        xs = np.linspace(interval[0], interval[1], steps, endpoint=True)
-        ys = [s(*(preargs+(x,)+postargs)) for x in xs]
-        ax.plot(xs, ys, color="blue", linewidth=2.0, linestyle="-")
-    if title:
-        plt.title(title)
-    plt.draw()
-    plt.pause(0.001)
-    if block:
-        input("Press [enter] to continue.")
-
-
-def a_larger_b(alpha=0):
-    return Predicate(lambda x, y: 1 if x - alpha >= y else 0, [R_plus, R_plus])
