@@ -13,15 +13,20 @@ from algorithms import scale
 from algorithms import epsilon
 from algorithms import factor
 from algorithms import Laplace
-from dataset_accuracy import threshold
+from naive import sparse
 
 
 datasets = ["bms-pos", "kosarak", "aol", "zipf"]
 
 e = 0.1  # this is what [@svt] used
 cs = list(range(1, 50)) + list(range(50, 301, 25))
-
 b_min = 0.01  # only compute probabilities down to this value
+N = 100
+
+
+def threshold(c, queries):
+    return (queries[c-1] + queries[c])/2
+
 
 def ratios(c, monotonic=True):
     m = factor(monotonic)
@@ -163,3 +168,29 @@ def write_probability(data, func, start=None, end=None):
                 with open('experiments/{}-{} {} {}.txt'.format(data, func.__name__, c, s), 'a') as f:
                     print(a, p, file=f)
             print()
+
+
+def write_samples(data):
+    """recreate the experiments from [@svt]"""
+    cs = list(range(25, 301, 25))
+    database = np.loadtxt('data/{}.txt'.format(data), dtype=int)
+
+    for c in cs:
+        print(c)
+        T = threshold(c, database)
+        for s, r in ratios(c).items():
+            ser = []
+            print(s)
+            for n in range(N):
+                queries = np.random.permutation(range(len(database)))
+                response = sparse(database, queries, T, e, r, c)
+                ser.append(score_error_rate(database, queries, response, c))
+            with open('experiments/{}-samples {} {}.txt'.format(data, c, s), 'w') as f:
+                for x in ser:
+                    print(x, file=f)
+
+
+def score_error_rate(database, queries, response, c):
+    avg_top_c = sum(database[:c])
+    avg_response = sum(database[q] for q, x in zip(queries, response) if x)
+    return 1 - avg_response / avg_top_c

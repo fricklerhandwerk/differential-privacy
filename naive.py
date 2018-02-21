@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-from numpy import random
-from algorithms import epsilon
+from numpy.random import laplace
+from algorithms import epsilon as get_epsilon
 from algorithms import scale
 
 
 def Lap(scale):
-    return random.laplace(scale=scale)
+    return laplace(scale=scale)
 
 
 def report_noisy_max(database, queries, epsilon):
@@ -16,7 +16,7 @@ def report_noisy_max(database, queries, epsilon):
 
 def sparse(database, queries, threshold, epsilon, ratio,
            c=1, sensitivity=1, monotonic=True):
-    e1, e2 = epsilon(epsilon, ratio)
+    e1, e2 = get_epsilon(epsilon, ratio)
     s1, s2 = scale(e1, e2, c, sensitivity, monotonic)
 
     result = []
@@ -33,3 +33,4 @@ def sparse(database, queries, threshold, epsilon, ratio,
         else:
             result.append(False)
     return result
+

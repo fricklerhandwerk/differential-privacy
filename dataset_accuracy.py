@@ -7,11 +7,8 @@ from collections import defaultdict
 from abovethreshold import Model
 from accuracy import probability_precise
 from accuracy import probability_optimized
+from experiments import threshold
 from algorithms import *
-
-
-def threshold(c, queries):
-    return (queries[c-1] + queries[c])/2
 
 
 def below(queries, threshold, alpha):
