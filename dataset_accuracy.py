@@ -8,6 +8,7 @@ from abovethreshold import Model
 from accuracy import probability_precise
 from accuracy import probability_optimized
 from experiments import threshold
+from experiments import discrete_pdf
 from algorithms import *
 
 
@@ -55,10 +56,6 @@ def error_rate_precise(model, a):
     result = 1 - worst_scores/top_scores, beta
     print("{} {} {}".format(a, result[0], result[1]))
     return result
-
-
-def discrete_pdf(ys):
-    return [ys[0]] + [ys[i] - ys[i-1] for i in range(1, len(ys))]
 
 
 def uniq_xs(pairs_gen):

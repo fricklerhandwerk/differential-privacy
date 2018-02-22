@@ -7,6 +7,7 @@ from math import log
 import numpy as np
 from numpy import product
 from scipy.integrate import quad
+from scipy.stats import rv_discrete
 
 from accuracy import probability_precise
 from accuracy import accuracy_optimized
@@ -17,7 +18,12 @@ from algorithms import Laplace
 from naive import sparse
 
 
-datasets = ["bms-pos", "kosarak", "aol", "zipf"]
+datasets = {
+    'bms-pos': "BMS-POS",
+    'kosarak': "Kosarak",
+    'aol': "AOL",
+    'zipf': "Zipf",
+}
 
 e = 0.1  # this is what [@svt] used
 cs = list(range(1, 50)) + list(range(50, 301, 25))
@@ -192,9 +198,9 @@ def write_samples(data):
 
 
 def score_error_rate(database, queries, response, c):
-    avg_top_c = sum(database[:c])
-    avg_response = sum(database[q] for q, x in zip(queries, response) if x)
-    return 1 - avg_response / avg_top_c
+    best_case = sum(database[:c])
+    sampled_case = sum(database[q] for q, x in zip(queries, response) if x)
+    return 1 - sampled_case / best_case
 
 
 def plot_samples(data):
@@ -207,8 +213,8 @@ def plot_samples(data):
         for c in cs:
             samples = np.loadtxt('experiments/{}-samples {} {}.txt'.format(data, c, s))
             ys.append(np.mean(samples))
-            std.append(np.std(samples))
-        ax.errorbar(cs, ys, yerr=std, color=color, capsize=5, fmt='-o', barsabove=True)
+            std.append((0, np.std(samples)))
+        ax.errorbar(cs, ys, yerr=list(zip(*std)), color=color, capsize=5, fmt='-o', barsabove=True)
 
     plt.xlim(min(cs),max(cs))
     plt.ylim(0,1)
@@ -216,6 +222,55 @@ def plot_samples(data):
     plt.xticks(cs)
     plt.xlabel("c")
     plt.ylabel("SER")
+    plt.title("{}, SER samples".format(datasets[data]))
     plt.show()
 
 
+def plot_accuracy(data):
+    cs = list(range(25, 301, 25))
+    fig, ax = plt.subplots()
+    colors = ['black', 'magenta', 'blue', 'red']
+    for s, color in zip(ratios(1).keys(), colors):
+        ys = []
+        std = []
+        for c in cs:
+            counts, array = read_data(data)
+            results = np.genfromtxt('experiments/{}-precise {} {}.txt'.format(data, c, s), dtype=None)
+            try:
+                rv = to_random_variable(results, c, array)
+            except ValueError:
+                ys.append(1)
+                std.append((0, 0))
+                continue
+            ys.append(rv.mean())
+            std.append((0, rv.std()))
+        ax.errorbar(cs, ys, yerr=list(zip(*std)), color=color, capsize=5, fmt='-o', barsabove=True)
+
+    plt.xlim(min(cs),max(cs))
+    plt.ylim(0,1)
+    plt.yticks(np.arange(0, 1.1, 0.1))
+    plt.xticks(cs)
+    plt.xlabel("c")
+    plt.ylabel("SER")
+    plt.title("{}, SER estimation".format(datasets[data]))
+    plt.show()
+
+
+def to_random_variable(results, c, database):
+    ser = []
+    prob = []
+    for a, b in results:
+        ser.append(score_error_rate_alpha(database, c, a))
+        prob.append(1 - b)
+    return rv_discrete(values=(ser, discrete_pdf(prob)))
+
+
+def score_error_rate_alpha(database, c, a):
+    T = threshold(c, database)
+    best_case = sum(database[:c])
+    worst_case = sum(database[database >= T - a][-c:])
+    return 1 - worst_case / best_case
+
+
+def discrete_pdf(ys):
+    return [ys[0]] + [ys[i] - ys[i-1] for i in range(1, len(ys))]
