@@ -2,6 +2,7 @@
 
 from collections import Counter
 import json
+import matplotlib.pyplot as plt
 from math import log
 import numpy as np
 from numpy import product
@@ -194,3 +195,27 @@ def score_error_rate(database, queries, response, c):
     avg_top_c = sum(database[:c])
     avg_response = sum(database[q] for q, x in zip(queries, response) if x)
     return 1 - avg_response / avg_top_c
+
+
+def plot_samples(data):
+    cs = list(range(25, 301, 25))
+    fig, ax = plt.subplots()
+    colors = ['black', 'magenta', 'blue', 'red']
+    for s, color in zip(ratios(1).keys(), colors):
+        ys = []
+        std = []
+        for c in cs:
+            samples = np.loadtxt('experiments/{}-samples {} {}.txt'.format(data, c, s))
+            ys.append(np.mean(samples))
+            std.append(np.std(samples))
+        ax.errorbar(cs, ys, yerr=std, color=color, capsize=5, fmt='-o', barsabove=True)
+
+    plt.xlim(min(cs),max(cs))
+    plt.ylim(0,1)
+    plt.yticks(np.arange(0, 1.1, 0.1))
+    plt.xticks(cs)
+    plt.xlabel("c")
+    plt.ylabel("SER")
+    plt.show()
+
+
