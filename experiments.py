@@ -4,6 +4,7 @@ from collections import Counter
 import json
 import matplotlib.pyplot as plt
 from math import log
+from math import isclose
 import numpy as np
 from numpy import product
 from scipy.integrate import quad
@@ -26,7 +27,8 @@ datasets = {
 }
 
 e = 0.1  # this is what [@svt] used
-cs = list(range(1, 50)) + list(range(50, 301, 25))
+cs = list(range(1, 125)) + list(range(125, 301, 25))
+CS = list(range(25, 301, 25))
 b_min = 0.01  # only compute probabilities down to this value
 N = 100
 
@@ -179,10 +181,9 @@ def write_probability(data, func, start=None, end=None):
 
 def write_samples(data):
     """recreate the experiments from [@svt]"""
-    cs = list(range(25, 301, 25))
     database = np.loadtxt('data/{}.txt'.format(data), dtype=int)
 
-    for c in cs:
+    for c in CS:
         print(c)
         T = threshold(c, database)
         for s, r in ratios(c).items():
@@ -204,22 +205,22 @@ def score_error_rate(database, queries, response, c):
 
 
 def plot_samples(data):
-    cs = list(range(25, 301, 25))
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(5,3))
     colors = ['black', 'magenta', 'blue', 'red']
     for s, color in zip(ratios(1).keys(), colors):
         ys = []
         std = []
-        for c in cs:
+        for c in CS:
             samples = np.loadtxt('experiments/{}-samples {} {}.txt'.format(data, c, s))
             ys.append(np.mean(samples))
             std.append((0, np.std(samples)))
-        ax.errorbar(cs, ys, yerr=list(zip(*std)), color=color, capsize=5, fmt='-o', barsabove=True)
+        ax.errorbar(CS, ys, yerr=list(zip(*std)), color=color, capsize=5, fmt='-o', barsabove=True)
 
-    plt.xlim(min(cs),max(cs))
+    ax.set_aspect(150) # this value makes no sense to me
+    plt.xlim(min(CS),max(CS))
     plt.ylim(0,1)
     plt.yticks(np.arange(0, 1.1, 0.1))
-    plt.xticks(cs)
+    plt.xticks(CS)
     plt.xlabel("c")
     plt.ylabel("SER")
     plt.title("{}, SER samples".format(datasets[data]))
@@ -227,42 +228,69 @@ def plot_samples(data):
 
 
 def plot_accuracy(data):
-    cs = list(range(25, 301, 25))
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(5,3))
     colors = ['black', 'magenta', 'blue', 'red']
     for s, color in zip(ratios(1).keys(), colors):
         ys = []
         std = []
-        for c in cs:
+        for c in CS:
             counts, array = read_data(data)
             results = np.genfromtxt('experiments/{}-precise {} {}.txt'.format(data, c, s), dtype=None)
-            try:
-                rv = to_random_variable(results, c, array)
-            except ValueError:
+            ser, prob = to_distribution(results, c, array)
+            if isclose(sum(prob), 1):
+                rv = rv_discrete(values=(ser, prob))
+                ys.append(rv.mean())
+                std.append((0, rv.std()))
+            else:
                 ys.append(1)
                 std.append((0, 0))
-                continue
-            ys.append(rv.mean())
-            std.append((0, rv.std()))
-        ax.errorbar(cs, ys, yerr=list(zip(*std)), color=color, capsize=5, fmt='-o', barsabove=True)
 
-    plt.xlim(min(cs),max(cs))
+        ax.errorbar(CS, ys, yerr=list(zip(*std)), color=color, capsize=5, fmt='-o', barsabove=True)
+
+    ax.set_aspect(150) # this value makes no sense to me
+    plt.xlim(min(CS),max(CS))
     plt.ylim(0,1)
     plt.yticks(np.arange(0, 1.1, 0.1))
-    plt.xticks(cs)
+    plt.xticks(CS)
     plt.xlabel("c")
     plt.ylabel("SER")
     plt.title("{}, SER estimation".format(datasets[data]))
     plt.show()
 
 
-def to_random_variable(results, c, database):
+def plot_accuracy_alpha(data):
+    fig, ax = plt.subplots(figsize=(5,3))
+    xs = []
+    ys = []
+    pr = []
+    for c in cs:
+        counts, array = read_data(data)
+        results = np.genfromtxt('experiments/{}-precise {} c23.txt'.format(data, c), dtype=None)
+        results = np.atleast_1d(results) # https://stackoverflow.com/a/24247766
+        ser, prob = to_distribution(results, c, array)
+        colors = np.zeros((len(ser), 4))
+        colors[:,0] = 1 # red
+        colors[:,3] = prob # alpha
+        ax.scatter([c] * len(ser), ser, color=colors, marker='s', edgecolors='none')
+
+    ax.set_aspect(150) # this value makes no sense to me
+    plt.xlim(min(cs),max(cs))
+    plt.ylim(0,1)
+    plt.yticks(np.arange(0, 1.1, 0.1))
+    plt.xticks([1] + CS)
+    plt.xlabel("c")
+    plt.ylabel("SER")
+    plt.title("{}, SER estimation".format(datasets[data]))
+    plt.show()
+
+
+def to_distribution(results, c, database):
     ser = []
     prob = []
     for a, b in results:
         ser.append(score_error_rate_alpha(database, c, a))
         prob.append(1 - b)
-    return rv_discrete(values=(ser, discrete_pdf(prob)))
+    return ser, discrete_pdf(prob)
 
 
 def score_error_rate_alpha(database, c, a):
