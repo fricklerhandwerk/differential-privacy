@@ -27,8 +27,7 @@ datasets = {
 }
 
 e = 0.1  # this is what [@svt] used
-cs = list(range(1, 125)) + list(range(125, 301, 25))
-CS = list(range(25, 301, 25))
+cs = list(range(25, 301, 25))
 b_min = 0.01  # only compute probabilities down to this value
 N = 100
 
@@ -183,7 +182,7 @@ def write_samples(data):
     """recreate the experiments from [@svt]"""
     database = np.loadtxt('data/{}.txt'.format(data), dtype=int)
 
-    for c in CS:
+    for c in cs:
         print(c)
         T = threshold(c, database)
         for s, r in ratios(c).items():
@@ -199,9 +198,11 @@ def write_samples(data):
 
 
 def score_error_rate(database, queries, response, c):
-    best_case = sum(database[:c])
-    sampled_case = sum(database[q] for q, x in zip(queries, response) if x)
-    return 1 - sampled_case / best_case
+    best_avg = sum(database[:c]) / c
+    sampled_score = sum(database[q] for q, x in zip(queries, response) if x)
+    sampled_length = len([x for x in response if x])
+    sampled_avg =  sampled_score / sampled_length
+    return 1 - sampled_avg / best_avg
 
 
 def plot_samples(data):
@@ -210,17 +211,17 @@ def plot_samples(data):
     for s, color in zip(ratios(1).keys(), colors):
         ys = []
         std = []
-        for c in CS:
+        for c in cs:
             samples = np.loadtxt('experiments/{}-samples {} {}.txt'.format(data, c, s))
             ys.append(np.mean(samples))
             std.append((0, np.std(samples)))
-        ax.errorbar(CS, ys, yerr=list(zip(*std)), color=color, capsize=5, fmt='-o', barsabove=True)
+        ax.errorbar(cs, ys, yerr=list(zip(*std)), color=color, capsize=5, fmt='-o', barsabove=True)
 
     ax.set_aspect(150) # this value makes no sense to me
-    plt.xlim(min(CS),max(CS))
+    plt.xlim(min(cs),max(cs))
     plt.ylim(0,1)
     plt.yticks(np.arange(0, 1.1, 0.1))
-    plt.xticks(CS)
+    plt.xticks(cs)
     plt.xlabel("c")
     plt.ylabel("SER")
     plt.title("{}, SER samples".format(datasets[data]))
@@ -233,7 +234,7 @@ def plot_accuracy(data):
     for s, color in zip(ratios(1).keys(), colors):
         ys = []
         std = []
-        for c in CS:
+        for c in cs:
             counts, array = read_data(data)
             results = np.genfromtxt('experiments/{}-precise {} {}.txt'.format(data, c, s), dtype=None)
             ser, prob = to_distribution(results, c, array)
@@ -245,13 +246,13 @@ def plot_accuracy(data):
                 ys.append(1)
                 std.append((0, 0))
 
-        ax.errorbar(CS, ys, yerr=list(zip(*std)), color=color, capsize=5, fmt='-o', barsabove=True)
+        ax.errorbar(cs, ys, yerr=list(zip(*std)), color=color, capsize=5, fmt='-o', barsabove=True)
 
     ax.set_aspect(150) # this value makes no sense to me
-    plt.xlim(min(CS),max(CS))
+    plt.xlim(min(cs),max(cs))
     plt.ylim(0,1)
     plt.yticks(np.arange(0, 1.1, 0.1))
-    plt.xticks(CS)
+    plt.xticks(cs)
     plt.xlabel("c")
     plt.ylabel("SER")
     plt.title("{}, SER estimation".format(datasets[data]))
@@ -277,7 +278,7 @@ def plot_accuracy_alpha(data):
     plt.xlim(min(cs),max(cs))
     plt.ylim(0,1)
     plt.yticks(np.arange(0, 1.1, 0.1))
-    plt.xticks([1] + CS)
+    plt.xticks([1] + cs)
     plt.xlabel("c")
     plt.ylabel("SER")
     plt.title("{}, SER estimation".format(datasets[data]))
@@ -295,6 +296,7 @@ def to_distribution(results, c, database):
 
 def score_error_rate_alpha(database, c, a):
     T = threshold(c, database)
+    # the length is always c, so we don't need to divide
     best_case = sum(database[:c])
     worst_case = sum(database[database >= T - a][-c:])
     return 1 - worst_case / best_case
