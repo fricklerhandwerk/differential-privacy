@@ -228,7 +228,7 @@ def plot_samples(data):
     plt.show()
 
 
-def plot_accuracy(data):
+def plot_accuracy(data, func):
     fig, ax = plt.subplots(figsize=(5,3))
     colors = ['black', 'magenta', 'blue', 'red']
     for s, color in zip(ratios(1).keys(), colors):
@@ -236,7 +236,7 @@ def plot_accuracy(data):
         std = []
         for c in cs:
             counts, array = read_data(data)
-            results = np.genfromtxt('experiments/{}-precise {} {}.txt'.format(data, c, s), dtype=None)
+            results = np.genfromtxt('experiments/{}-{} {} {}.txt'.format(data, func.__name__, c, s), dtype=None)
             ser, prob = to_distribution(results, c, array)
             if isclose(sum(prob), 1):
                 rv = rv_discrete(values=(ser, prob))
@@ -259,14 +259,14 @@ def plot_accuracy(data):
     plt.show()
 
 
-def plot_accuracy_alpha(data):
+def plot_accuracy_alpha(data, func):
     fig, ax = plt.subplots(figsize=(5,3))
     xs = []
     ys = []
     pr = []
     for c in cs:
         counts, array = read_data(data)
-        results = np.genfromtxt('experiments/{}-precise {} c23.txt'.format(data, c), dtype=None)
+        results = np.genfromtxt('experiments/{}-{} {} c23.txt'.format(data, func.__name__, c), dtype=None)
         results = np.atleast_1d(results) # https://stackoverflow.com/a/24247766
         ser, prob = to_distribution(results, c, array)
         colors = np.zeros((len(ser), 4))
