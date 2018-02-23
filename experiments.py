@@ -182,19 +182,19 @@ def write_samples(data):
     """recreate the experiments from [@svt]"""
     database = np.loadtxt('data/{}.txt'.format(data), dtype=int)
 
-    for c in cs:
-        print(c)
-        T = threshold(c, database)
-        for s, r in ratios(c).items():
-            ser = []
-            print(s)
-            for n in range(N):
-                queries = np.random.permutation(range(len(database)))
+    for n in range(N):
+        print(n)
+        queries = np.random.permutation(range(len(database)))
+        for c in cs:
+            print(c, end='\r')
+            T = threshold(c, database)
+            for s, r in ratios(c).items():
+                ser = []
                 response = sparse(database, queries, T, e, r, c)
                 ser.append(score_error_rate(database, queries, response, c))
-            with open('experiments/{}-samples {} {}.txt'.format(data, c, s), 'w') as f:
-                for x in ser:
-                    print(x, file=f)
+                with open('experiments/{}-samples {} {}.txt'.format(data, c, s), 'w') as f:
+                    for x in ser:
+                        print(x, file=f)
 
 
 def score_error_rate(database, queries, response, c):
