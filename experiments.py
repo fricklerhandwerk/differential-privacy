@@ -192,9 +192,10 @@ def write_samples(data):
                 ser = []
                 response = sparse(database, queries, T, e, r, c)
                 ser.append(score_error_rate(database, queries, response, c))
-                with open('experiments/{}-samples {} {}.txt'.format(data, c, s), 'w') as f:
+                with open('experiments/{}-samples {} {}.txt'.format(data, c, s), 'a') as f:
                     for x in ser:
                         print(x, file=f)
+        print()
 
 
 def score_error_rate(database, queries, response, c):

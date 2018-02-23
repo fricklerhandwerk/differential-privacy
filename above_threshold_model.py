@@ -15,14 +15,16 @@ locs = [random.randint(0,MAX) for _ in range(LEN)]
 queries = [Laplace(1/epsilon1, i) for i in locs]
 threshold = Laplace(1/epsilon2, T)
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(6,4))
 xs = np.arange(MAX)
-ys = [threshold.pdf(x) for x in xs]
-ax.plot(xs, ys, color="red", linewidth=2.0, linestyle="-", label="Pr(T)")
-ax.plot([], color="blue", linewidth=2.0, linestyle="-", label="Pr(q$_i$)")
+ax.fill_between([], [], color="blue", linewidth=0, linestyle="-", label="$\mathbb{P}(\hat{q}_i = x)$", alpha=0.8)
 for q in queries:
 	ys = [q.pdf(x) for x in xs]
-	ax.plot(xs, ys, color="blue", linewidth=2.0, linestyle="-")
+	ax.fill_between(xs, ys, color="blue", linewidth=0, linestyle="-", alpha=0.8)
+ys = [threshold.pdf(x) for x in xs]
+ax.fill_between(xs, ys, color="red", linewidth=0, linestyle="-", label="$\mathbb{P}(\hat{T} = x)$", alpha=0.8)
 ax.legend(loc='upper right')
+ax.set_xlabel('x')
+plt.xlim(0,MAX)
 plt.ylim(0,0.1)
 plt.show()

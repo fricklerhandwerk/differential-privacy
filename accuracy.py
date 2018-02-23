@@ -139,7 +139,7 @@ def plot():
     example = [accuracy_overestimate(b, k, s1, s2), accuracy_baseline(b, k, s1, s2), accuracy_optimized(b, k, s1, s2)]
     MAX = max(example)
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(7,4))
     plt.ylim(0,1)
     plt.xlim(0,MAX)
 
