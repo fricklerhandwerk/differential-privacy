@@ -17,12 +17,12 @@ threshold = Laplace(1/epsilon2, T)
 
 fig, ax = plt.subplots(figsize=(6,4))
 xs = np.arange(MAX)
-ax.fill_between([], [], color="blue", linewidth=0, linestyle="-", label="$\mathbb{P}(\hat{q}_i = x)$", alpha=0.8)
+ax.fill_between([], [], color="blue", linewidth=0, linestyle="-", label="Pr$(\hat{q}_i = x)$", alpha=0.6)
 for q in queries:
 	ys = [q.pdf(x) for x in xs]
-	ax.fill_between(xs, ys, color="blue", linewidth=0, linestyle="-", alpha=0.8)
+	ax.fill_between(xs, ys, color="blue", linewidth=0, linestyle="-", alpha=0.6)
 ys = [threshold.pdf(x) for x in xs]
-ax.fill_between(xs, ys, color="red", linewidth=0, linestyle="-", label="$\mathbb{P}(\hat{T} = x)$", alpha=0.8)
+ax.fill_between(xs, ys, color="red", linewidth=0, linestyle="-", label="Pr$(\hat{T} = x)$", alpha=0.6)
 ax.legend(loc='upper right')
 ax.set_xlabel('x')
 plt.xlim(0,MAX)
