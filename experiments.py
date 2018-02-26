@@ -79,29 +79,35 @@ def write_alphas(data, start=None, end=None):
         T = threshold(c, query_array)
         print('T:', T, end=' ')
 
-        above_below = {}
-        for a in range(k):
-            queries_below = below(query_counts, T, a)
-            queries_above = above(query_counts, T, a)
-            key = (len(queries_below.keys()), len(queries_above.keys()))
-            above_below[key] = {
-                'alpha': a,
-                'below': queries_below,
-                'above': queries_above,
-            }
-
-        print('c:', c, len(above_below), end='\r')
-
-        result = {}
-        for _, v in above_below.items():
-            result[v['alpha']] = {
-                'below': v['below'],
-                'above': v['above'],
-            }
+        result = compute_alphas(c, T, k, query_counts)
 
         with open('experiments/{}-alphas {}.txt'.format(data, c), 'w') as f:
             json.dump(result, f, separators=(',', ':'))
 
+
+def compute_alphas(c, T, k, query_counts):
+    # collect unique sets of queries outside  the T+/-alpha range
+    # this implicitly takes the largest `a` for each set
+    above_below = {}
+    for a in range(T):
+        queries_below = below(query_counts, T, a)
+        queries_above = above(query_counts, T, a)
+        key = (len(queries_below.keys()), len(queries_above.keys()))
+        above_below[key] = {
+            'alpha': a,
+            'below': queries_below,
+            'above': queries_above,
+        }
+    print('c:', c, len(above_below), end='\r')
+
+    result = {}
+    for _, v in above_below.items():
+        result[v['alpha']] = {
+            'below': v['below'],
+            'above': v['above'],
+        }
+
+    return result
 
 def read_alphas(data, c):
     with open('experiments/{}-alphas {}.txt'.format(data, c)) as f:

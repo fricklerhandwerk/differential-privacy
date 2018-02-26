@@ -11,6 +11,7 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigCanvas
 from matplotlib.figure import Figure
 from matplotlib.ticker import MaxNLocator
 
+from collections import Counter
 from math import log
 from numpy import product
 from scipy.integrate import quad
@@ -21,6 +22,8 @@ from accuracy import probability_overestimate
 from accuracy import probability_baseline
 from accuracy import probability_optimized
 from accuracy import probability_precise
+from experiments import precise as probability_data
+from experiments import compute_alphas
 
 
 class Model(object):
@@ -140,49 +143,23 @@ class Model(object):
         else:
             return 1 - pr_above
 
-    def below(self, alpha):
-        return self.queries[self.queries <= self.threshold - alpha]
-
-    def above(self, alpha):
-        return self.queries[self.queries >= self.threshold + alpha]
-
-    def accuracy_simple(self, alpha):
-        below = self.below(alpha)
-        above = self.above(alpha)
-        max_below = max(below)
-        min_above = min(above)
-
-        def pred(x):
-            approx_below = self.pr_single_response(False, max_below, x)**len(below)
-            approx_above = self.pr_single_response(True, min_above, x)**len(above)
-            return approx_below * approx_above
-
-        def state(x):
-            return self.threshold_state(x) * pred(x)
-
-        print("alpha: {}, below: {}, above: {}".format(alpha, len(below), len(above)))
-        return quad(state, 0, max(self.queries), points=[self.threshold])[0]
-
-    def accuracy_precise(self, alpha):
-        below = self.below(alpha)
-        above = self.above(alpha)
-
-        rs = [False] * len(below) + [True] * len(above)
-        qs = below.tolist() + above.tolist()
-
-        def pred(x):
-            return product([self.pr_single_response(r, q, x) for (r, q) in zip(rs, qs)])
-
-        def state(x):
-            return self.threshold_state(x) * pred(x)
-
-        print("alpha: {}, below: {}, above: {}".format(alpha, len(below), len(above)))
-        return quad(state, 0, max(self.queries), points=[self.threshold])[0]
-
     @property
     def pr_diff(self):
         """differential probability of original and shifted query vector"""
         return abs(log(self.pr_response/self.pr_shifted))
+
+
+    @property
+    def alphas(self):
+        c = self.count
+        T = self. threshold
+        k = self.length
+        counts = self.counts
+        return compute_alphas(c, T, k, counts)
+
+    @property
+    def counts(self):
+        return dict(Counter(self.queries))
 
     @property
     def correct_response(self):
@@ -323,9 +300,12 @@ class Accuracy(LineGraph):
         ax = self.axes
         ax.clear()
 
+        T = self.model.threshold
         k = self.model.length
         s1 = self.model.threshold_scale
         s2 = self.model.query_scale
+        queries = self.model.queries
+        alphas = self.model.alphas
 
         MAX = accuracy_overestimate(0.01, k, s1, s2)
 
@@ -334,6 +314,11 @@ class Accuracy(LineGraph):
         ax.plot(xs, [probability_baseline(x, k, s1, s2) for x in xs], color="green", linewidth=2.0, label="baseline")
         ax.plot(xs, [probability_optimized(x, k, s1, s2) for x in xs], color="blue", linewidth=2.0, label="optimized")
         ax.plot(xs, [probability_precise(x, k, s1, s2) for x in xs], color="black", linewidth=2.0, label="precise")
+        ys = [probability_data(x, k, s1, s2, queries, alphas, T) for x in alphas.keys()]
+        print(ys)
+        print(alphas.keys())
+        ax.plot(list(alphas.keys()), ys, color="magenta",
+                linewidth=2.0, label="data-bound")
         ax.legend(loc='upper right')
         ax.set_ylim(0, 1)
         ax.set_xlim(0, MAX)
