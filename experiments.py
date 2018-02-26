@@ -11,6 +11,7 @@ from scipy.integrate import quad
 from scipy.stats import rv_discrete
 
 from accuracy import probability_precise
+from accuracy import probability_optimized
 from accuracy import accuracy_optimized
 from algorithms import scale
 from algorithms import epsilon
@@ -25,6 +26,7 @@ datasets = {
     'aol': "AOL",
     'zipf': "Zipf",
 }
+
 
 e = 0.1  # this is what [@svt] used
 cs = list(range(25, 301, 25))
@@ -44,6 +46,9 @@ def ratios(c, monotonic=True):
         'c': m*c,
         'c23': (m*c)**(2/3),
     }
+
+
+colors = ['black', 'magenta', 'blue', 'red']
 
 
 def read_data(data):
@@ -206,15 +211,17 @@ def score_error_rate(database, queries, response, c):
     return 1 - sampled_avg / best_avg
 
 
-def plot_samples(data):
+mean = np.mean
+median = np.median
+
+def plot_samples(data, average=mean):
     fig, ax = plt.subplots(figsize=(5,3))
-    colors = ['black', 'magenta', 'blue', 'red']
     for s, color in zip(ratios(1).keys(), colors):
         ys = []
         std = []
         for c in cs:
             samples = np.loadtxt('experiments/{}-samples {} {}.txt'.format(data, c, s))
-            ys.append(np.mean(samples))
+            ys.append(average(samples))
             std.append((0, np.std(samples)))
         ax.errorbar(cs, ys, yerr=list(zip(*std)), color=color, capsize=5, fmt='-o', barsabove=True)
 
@@ -286,6 +293,30 @@ def plot_accuracy_alpha(data, func):
     plt.xlabel("c")
     plt.ylabel("SER")
     plt.title("{}, SER estimation".format(datasets[data]))
+    plt.show()
+
+
+def plot_accuracy_parameters(c, k):
+    fig, ax = plt.subplots(figsize=(6,4))
+    b_min = 0.01
+    MAX = 0
+    rs = {s: r for r, s in zip(ratios(c).values(), ["1", "3", "c", r"c$^{2/3}$"])}
+    for s, r in rs.items():
+        s1, s2 = scale(*epsilon(e, r), c)
+        new_MAX = accuracy_optimized(b_min, k, s1, s2)
+        if MAX < new_MAX:
+            MAX = new_MAX
+    for (s, r), color in zip(rs.items(), colors):
+        s1, s2 = scale(*epsilon(e, r), c)
+        xs = np.arange(MAX)
+        ys = [probability_optimized(x, k, s1, s2) for x in xs]
+        ax.plot(xs, ys, color=color, linewidth=2.0, label=s)
+    plt.ylim(0, 1)
+    plt.xlim(0, MAX)
+    plt.legend(loc='lower left')
+    plt.xlabel(r"$\alpha$")
+    plt.ylabel(r"$\beta$")
+    plt.title(r"$\epsilon$ = {}, c = {}, k = {}".format(e, c, k))
     plt.show()
 
 
