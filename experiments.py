@@ -232,14 +232,16 @@ def plot_samples(data):
 def plot_accuracy(data, func):
     fig, ax = plt.subplots(figsize=(5,3))
     colors = ['black', 'magenta', 'blue', 'red']
+    counts, array = read_data(data)
     for s, color in zip(ratios(1).keys(), colors):
         ys = []
         std = []
         for c in cs:
-            counts, array = read_data(data)
             results = np.genfromtxt('experiments/{}-{} {} {}.txt'.format(data, func.__name__, c, s), dtype=None)
             ser, prob = to_distribution(results, c, array)
-            if isclose(sum(prob), 1):
+            # need to handle the case where the estimation is too bad
+            # and does not lead to a proper distribution
+            if isclose(sum(prob), 1, rel_tol=1e-07):
                 rv = rv_discrete(values=(ser, prob))
                 ys.append(rv.mean())
                 std.append((0, rv.std()))
