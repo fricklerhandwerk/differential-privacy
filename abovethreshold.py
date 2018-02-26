@@ -28,7 +28,7 @@ from experiments import compute_alphas
 
 class Model(object):
     def __init__(
-        self, threshold, e1, e2, sensitivity=1, monotonic=True,
+        self, threshold, e1, e2, sensitivity=1, monotonic=True, compute=False,
             length=5, shift=1):
 
         self.threshold = threshold
@@ -36,6 +36,7 @@ class Model(object):
         self.epsilon2 = e2
         self.sensitivity = sensitivity
         self.monotonic = monotonic
+        self.compute = compute
 
         self.length = length
         self.shift = shift
@@ -47,15 +48,15 @@ class Model(object):
         self.count = self.get_count()
 
         """probability of getting `response`, given `queries` and `threshold`"""
-        self.pr_response = 0
+        self.pr_response = 1
         """probability of getting `response`, given `queries` + `shift_vector` and `threshold"""
-        self.pr_shifted = 0
+        self.pr_shifted = 1
         """probability of getting a correct response,
         given `queries` and `threshold`"""
-        self.pr_correct = 0
+        self.pr_correct = 1
         """probability of getting an alpha-accurate response,
         given `queries` and `threshold`"""
-        self.pr_accurate = 0
+        self.pr_accurate = 1
         """probabilities of each response item with respect to queries and threshold"""
         self.pr_items = []
 
@@ -304,8 +305,6 @@ class Accuracy(LineGraph):
         k = self.model.length
         s1 = self.model.threshold_scale
         s2 = self.model.query_scale
-        queries = self.model.queries
-        alphas = self.model.alphas
 
         MAX = accuracy_overestimate(0.01, k, s1, s2)
 
@@ -313,12 +312,14 @@ class Accuracy(LineGraph):
         ax.plot(xs, [probability_overestimate(x, k, s1, s2) for x in xs], color="red", linewidth=2.0, label="overestimate")
         ax.plot(xs, [probability_baseline(x, k, s1, s2) for x in xs], color="green", linewidth=2.0, label="baseline")
         ax.plot(xs, [probability_optimized(x, k, s1, s2) for x in xs], color="blue", linewidth=2.0, label="optimized")
-        ax.plot(xs, [probability_precise(x, k, s1, s2) for x in xs], color="black", linewidth=2.0, label="precise")
-        ys = [probability_data(x, k, s1, s2, queries, alphas, T) for x in alphas.keys()]
-        print(ys)
-        print(alphas.keys())
-        ax.plot(list(alphas.keys()), ys, color="magenta",
-                linewidth=2.0, label="data-bound")
+        if self.model.compute:
+            ax.plot(xs, [probability_precise(x, k, s1, s2) for x in xs], color="black", linewidth=2.0, label="precise")
+            queries = self.model.queries
+            alphas = self.model.alphas
+            xs = [0] + list(alphas.keys())
+            ys = [probability_data(x, k, s1, s2, queries, alphas, T) for x in alphas.keys()] + [0]
+            ax.step(xs, ys, where='post',
+                color="magenta", linewidth=2.0, label="data-bound")
         ax.legend(loc='upper right')
         ax.set_ylim(0, 1)
         ax.set_xlim(0, MAX)
@@ -496,6 +497,10 @@ class Frame(wx.Frame):
             panel, label="Monotonic", style=wx.ALIGN_RIGHT)
         self.monotonic = wx.CheckBox(panel)
         self.monotonic.SetValue(self.model.monotonic)
+        compute_label = wx.StaticText(
+            panel, label="Slow graphs", style=wx.ALIGN_RIGHT)
+        self.compute = wx.CheckBox(panel)
+        self.compute.SetValue(self.model.compute)
 
         grid = [
             [threshold_label, self.threshold],
@@ -504,6 +509,7 @@ class Frame(wx.Frame):
             [sensitivity_label, self.sensitivity],
             [count_label, self.count],
             [monotonic_label, self.monotonic],
+            [compute_label, self.compute],
         ]
         sizer = wx.FlexGridSizer(rows=len(grid), cols=len(grid[0]), gap=(5, 5))
         for line in grid:
@@ -519,6 +525,7 @@ class Frame(wx.Frame):
         self.Bind(wx.EVT_SPINCTRL, self.on_count, self.count)
         self.Bind(wx.EVT_TEXT_ENTER, on_spin_enter, self.count)
         self.Bind(wx.EVT_CHECKBOX, self.on_monotonic, self.monotonic)
+        self.Bind(wx.EVT_CHECKBOX, self.on_compute, self.compute)
 
         panel.SetSizer(sizer)
         return panel
@@ -628,6 +635,10 @@ class Frame(wx.Frame):
 
     def on_monotonic(self, event):
         self.model.monotonic = event.GetEventObject().GetValue()
+        self.on_parameter_change()
+
+    def on_compute(self, event):
+        self.model.compute = event.GetEventObject().GetValue()
         self.on_parameter_change()
 
     def on_plus(self, event):
