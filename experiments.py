@@ -89,7 +89,7 @@ def compute_alphas(c, T, k, query_counts):
     # collect unique sets of queries outside  the T+/-alpha range
     # this implicitly takes the largest `a` for each set
     above_below = {}
-    for a in range(T):
+    for a in range(int(T)):
         queries_below = below(query_counts, T, a)
         queries_above = above(query_counts, T, a)
         key = (len(queries_below.keys()), len(queries_above.keys()))
