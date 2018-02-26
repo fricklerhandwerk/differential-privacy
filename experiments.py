@@ -238,10 +238,10 @@ def plot_accuracy(data, func):
         std = []
         for c in cs:
             results = np.genfromtxt('experiments/{}-{} {} {}.txt'.format(data, func.__name__, c, s), dtype=None)
-            ser, prob = to_distribution(results, c, array)
+            ser, prob = to_pdf(*to_cdf(results, c, array))
             # need to handle the case where the estimation is too bad
             # and does not lead to a proper distribution
-            if isclose(sum(prob), 1, rel_tol=1e-07):
+            if isclose(sum(prob), 1, rel_tol=1e-05):
                 rv = rv_discrete(values=(ser, prob))
                 ys.append(rv.mean())
                 std.append((0, rv.std()))
@@ -271,7 +271,8 @@ def plot_accuracy_alpha(data, func):
         counts, array = read_data(data)
         results = np.genfromtxt('experiments/{}-{} {} c23.txt'.format(data, func.__name__, c), dtype=None)
         results = np.atleast_1d(results) # https://stackoverflow.com/a/24247766
-        ser, prob = to_distribution(results, c, array)
+        ser, prob = to_pdf(*to_cdf(results, c, array))
+        prob = discrete_pdf(prob)
         colors = np.zeros((len(ser), 4))
         colors[:,0] = 1 # red
         colors[:,3] = prob # alpha
@@ -288,12 +289,16 @@ def plot_accuracy_alpha(data, func):
     plt.show()
 
 
-def to_distribution(results, c, database):
+def to_cdf(results, c, database):
     ser = []
     prob = []
     for a, b in results:
         ser.append(score_error_rate_alpha(database, c, a))
         prob.append(1 - b)
+    return ser, prob
+
+
+def to_pdf(ser, prob):
     return ser, discrete_pdf(prob)
 
 
