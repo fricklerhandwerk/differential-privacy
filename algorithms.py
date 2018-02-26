@@ -145,22 +145,5 @@ class Gaussian(Distribution):
         return diffCDF
 
 
-class Exponential(Distribution):
-    def pdf(self, x):
-        b = self.scale
-        m = self.loc
-        N = (1 - exp(-b)) / 2  # assuming utility is closeness to b
-        return N * exp(-b * abs(floor(x - m)))
-
-    def cdf(self, x):
-        pass
-
-    def difference(self, other):
-        pass
-
-    def differenceCDF(self, other):
-        pass
-
-
 def sgn(x):
     return copysign(1, x)

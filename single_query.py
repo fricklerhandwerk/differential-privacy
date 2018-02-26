@@ -16,7 +16,6 @@ from algorithms import *
 class Mode(Enum):
     Laplace = Laplace
     Gaussian = Gaussian
-    Exponential = Exponential
 
     @classmethod
     def names(cls):
@@ -266,7 +265,7 @@ class Frame(wx.Frame):
             self.checkbox_quantile.Enable(False)
             self.slider_delta.Enable(False)
             self.label_delta.Enable(False)
-        elif mode == Mode.Gaussian:
+        else:
             c = sqrt(2*log(1.25/delta))
             self.a = Gaussian(c*sensitivity/epsilon, a)
             self.b = Gaussian(c*sensitivity/epsilon, b)
@@ -274,12 +273,6 @@ class Frame(wx.Frame):
             self.checkbox_quantile.Enable(True)
             self.slider_delta.Enable(True)
             self.label_delta.Enable(True)
-        else:
-            self.a = Exponential(epsilon/sensitivity, a)
-            self.b = Exponential(epsilon/sensitivity, b)
-            self.checkbox_quantile.Enable(False)
-            self.slider_delta.Enable(False)
-            self.label_delta.Enable(False)
 
     def calculate_a_greater_b(self):
         a, b = self.get_distributions()
