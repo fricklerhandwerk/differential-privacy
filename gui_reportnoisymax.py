@@ -179,7 +179,7 @@ class PrivacyLoss(Graph3D):
         ax.azim = 45
         ax.elev = 15
         mode = self.model.mode.name
-        self.figure.suptitle("Privacy Loss for Report Noisy Max using {} Mechanism".format(mode))
+        self.figure.suptitle("Privacy Loss for Report Noisy Max")
         self.canvas.draw()
 
 
