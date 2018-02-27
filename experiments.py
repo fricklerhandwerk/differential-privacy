@@ -326,6 +326,28 @@ def plot_accuracy_parameters(c, k):
     plt.show()
 
 
+def plot_accuracy_slice(data, func, e, c, s):
+    fig, ax = plt.subplots(figsize=(7,4))
+    _counts, array = read_data(data)
+    ys = []
+    std = []
+    results = np.genfromtxt('experiments/{}-{} {} {}.txt'.format(data, func.__name__, c, s), dtype=None)
+    ser, prob = to_cdf(results, c, array)
+    ax.bar(ser, prob, color="red", align='edge',
+           label=r"$\mathrm{Pr}(\mathrm{SER} \leq x) \geq 1 - \beta$")
+
+    ax.bar(ser, discrete_pdf(prob), width=1/100, color="blue", align='edge',
+           label=r"$\mathrm{Pr}(\mathrm{SER} = x) \approx 1 - \beta$")
+
+    plt.xlim(0,1)
+    plt.ylim(0,1)
+    plt.xlabel(r"$x$")
+    plt.ylabel(r"$1 - \beta$")
+    ax.legend(loc='upper left')
+    plt.title(r"{}, $k = {}, c = {}, \epsilon = {}$".format(datasets[data], len(array), c, e))
+    plt.show()
+
+
 def to_cdf(results, c, database):
     ser = []
     prob = []
