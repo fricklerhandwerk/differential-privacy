@@ -208,18 +208,18 @@ class Model(object):
 
 class StaticBox(wx.StaticBox):
     def SetSizer(self, sizer):
-        super(wx.StaticBox, self).SetSizer(sizer)
+        super().SetSizer(sizer)
         # the label's height is always included in the total size, so compensate
         _, label_height = self.GetSize()
         self.SetMinSize(sizer.GetMinSize() + (0, label_height))
 
 
-class LineGraph(FigCanvas):
+class LineGraph(wx.Panel):
     def __init__(self, parent, model, lower=0, upper=100, step=1):
-        self.parent = parent
+        super().__init__(parent)
         self.figure = Figure(figsize=(5,3))
+        self.canvas = FigCanvas(self, wx.ID_ANY, self.figure)
         self.axes = self.figure.add_subplot(1, 1, 1)
-        super(FigCanvas, self).__init__(parent, wx.ID_ANY, self.figure)
         self.model = model
 
         self.lower = wx.SpinCtrl(
@@ -231,6 +231,7 @@ class LineGraph(FigCanvas):
         self.step = wx.SpinCtrl(
             self, style=wx.TE_PROCESS_ENTER | wx.ALIGN_RIGHT, size=(60, -1),
             min=1, max=2048, initial=step)
+
         self.sizer = self.create_sizer()
 
     def plot(self):
@@ -242,7 +243,7 @@ class LineGraph(FigCanvas):
 
     def create_sizer(self):
         vbox = wx.BoxSizer(wx.VERTICAL)
-        vbox.Add(self, proportion=1, flag=wx.LEFT | wx.TOP | wx.EXPAND)
+        vbox.Add(self.canvas, proportion=1, flag=wx.LEFT | wx.TOP | wx.EXPAND)
         bounds = wx.BoxSizer(wx.HORIZONTAL)
         bounds.Add(wx.StaticText(self, label="Lower bound"))
         bounds.Add(self.lower)
@@ -258,15 +259,16 @@ class LineGraph(FigCanvas):
             self.Bind(wx.EVT_SPINCTRL, self.plot, widget)
             self.Bind(wx.EVT_TEXT_ENTER, on_spin_enter, widget)
 
+        self.SetSizer(vbox)
         return vbox
 
 
-class BarGraph(FigCanvas):
+class BarGraph(wx.Panel):
     def __init__(self, parent, model):
-        self.parent = parent
+        super().__init__(parent)
         self.figure = Figure(figsize=(5,2))
         self.axes = self.figure.add_subplot(1, 1, 1)
-        super(FigCanvas, self).__init__(parent, wx.ID_ANY, self.figure)
+        self.canvas = FigCanvas(self, wx.ID_ANY, self.figure)
         self.model = model
 
     def plot(self):
@@ -274,7 +276,7 @@ class BarGraph(FigCanvas):
 
 
 class Probabilities(BarGraph):
-    def plot(self):
+    def plot(self, event):
         ax = self.axes
         ax.clear()
 
@@ -293,11 +295,22 @@ class Probabilities(BarGraph):
         ax.set_ylim(0,1)
         ax.legend((original[0], shifted[0]), ("original", "shifted"), loc='upper right')
         self.figure.suptitle("Probabilities of individual responses")
-        self.draw()
+        self.canvas.draw()
 
 
 class Accuracy(LineGraph):
-    def plot(self):
+    @property
+    def abscissa(self):
+        s1 = self.model.threshold_scale
+        s2 = self.model.query_scale
+        k = self.model.length
+
+        MAX = int(accuracy_overestimate(0.01, k, s1, s2))
+        self.upper.SetValue(MAX)
+
+        return super().abscissa
+
+    def plot(self, event):
         ax = self.axes
         ax.clear()
 
@@ -306,9 +319,7 @@ class Accuracy(LineGraph):
         s1 = self.model.threshold_scale
         s2 = self.model.query_scale
 
-        MAX = accuracy_overestimate(0.01, k, s1, s2)
-
-        xs = np.arange(MAX)
+        xs = self.abscissa
         ax.plot(xs, [probability_overestimate(x, k, s1, s2) for x in xs], color="red", linewidth=2.0, label="overestimate")
         ax.plot(xs, [probability_baseline(x, k, s1, s2) for x in xs], color="green", linewidth=2.0, label="baseline")
         ax.plot(xs, [probability_optimized(x, k, s1, s2) for x in xs], color="blue", linewidth=2.0, label="optimized")
@@ -316,15 +327,15 @@ class Accuracy(LineGraph):
             ax.plot(xs, [probability_precise(x, k, s1, s2) for x in xs], color="black", linewidth=2.0, label="precise")
             queries = self.model.queries
             alphas = self.model.alphas
-            xs = [0] + list(alphas.keys())
-            ys = [probability_data(x, k, s1, s2, queries, alphas, T) for x in alphas.keys()] + [0]
-            ax.step(xs, ys, where='post',
+            xs_ = [0] + list(alphas.keys())
+            ys_ = [probability_data(x, k, s1, s2, queries, alphas, T) for x in alphas.keys()] + [0]
+            ax.step(xs_, ys_, where='post',
                 color="magenta", linewidth=2.0, label="data-bound")
         ax.legend(loc='upper right')
         ax.set_ylim(0, 1)
-        ax.set_xlim(0, MAX)
+        ax.set_xlim(min(xs), max(xs))
         self.figure.suptitle("Accuracy estimation")
-        self.draw
+        self.canvas.draw()
 
 
 class Frame(wx.Frame):
@@ -560,11 +571,11 @@ class Frame(wx.Frame):
         graphs = wx.Panel(parent)
 
         bars_original = Probabilities(graphs, self.model)
-        accuracy = Accuracy(graphs, self.model, lower=80, upper=120)
+        accuracy = Accuracy(graphs, self.model)
 
         box = wx.BoxSizer(wx.VERTICAL)
         box.Add(bars_original, proportion=0, flag=wx.EXPAND)
-        box.Add(accuracy.sizer, proportion=0, flag=wx.EXPAND)
+        box.Add(accuracy, proportion=0, flag=wx.EXPAND)
 
         graphs.SetSizer(box)
         return graphs
@@ -610,8 +621,8 @@ class Frame(wx.Frame):
     def draw(self):
         self.update_stats()
         self.main_panel.Layout()
-        for g in self.graphs.Children:
-            g.plot()
+        for g in [x for x in self.graphs.Children if type(x) != wx._core.SpinCtrl and type(x) != wx._core.StaticText]:
+            g.plot(None)
 
     def on_threshold(self, event):
         self.model.threshold = event.GetEventObject().GetValue()
