@@ -714,11 +714,12 @@ class Frame(wx.Frame):
         * Adjust the algorithm parameters T, e1, e2, sensitivity, count
 
         The program displays the queries' individual probabilities to produce
-        the given response vector enties, as well as the probability of the whole
-        query vector producing the given response vector.
+        the given response vector entries, the probability of the whole
+        query vector producing the given response vector, and the probability
+        of the query vector to produce a correct response.
 
-        Query values below threshold are highlighted, as well as incorrect
-        response vector entries.
+        In addition multiple methods of accuracy estimation of the algorithm
+        with set parameters are displayed.
         """
         dlg = wx.MessageDialog(self, msg, "About", wx.OK)
         dlg.ShowModal()
