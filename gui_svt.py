@@ -1,5 +1,4 @@
 import os
-import pprint
 import random
 import wx
 import wx.lib.agw.floatspin as fs
@@ -13,6 +12,7 @@ from matplotlib.ticker import MaxNLocator
 
 from collections import Counter
 from math import log
+import numpy as np
 from numpy import product
 from scipy.integrate import quad
 
@@ -129,7 +129,7 @@ class Model(object):
                             for (r, q) in zip(response, queries)])
 
         def state(x):
-            return self.threshold_state(x) * pred(x)
+            return self.threshold_dist(x) * pred(x)
 
         error = 1/1e12
         T_bound = self.threshold_scale * log(1/error)
@@ -169,10 +169,6 @@ class Model(object):
     @property
     def shifted_queries(self):
         return [a + b for (a, b) in zip(self.queries, self.shift_vector)]
-
-    @property
-    def threshold_state(self):
-        return self.threshold_dist.state
 
     @property
     def threshold_dist(self):

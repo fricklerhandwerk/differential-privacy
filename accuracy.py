@@ -6,7 +6,6 @@ from scipy.optimize import root
 
 from matplotlib import pyplot as plt
 
-from efprob.dc import *
 from algorithms import *
 
 
@@ -139,7 +138,7 @@ def plot():
     example = [accuracy_overestimate(b, k, s1, s2), accuracy_baseline(b, k, s1, s2), accuracy_optimized(b, k, s1, s2)]
     MAX = max(example)
 
-    fig, ax = plt.subplots(figsize=(7,4))
+    fig, ax = plt.subplots(figsize=(7, 4))
     plt.ylim(0,1)
     plt.xlim(0,MAX)
 
@@ -155,7 +154,7 @@ def plot():
     ax.set_ylabel(r"$\beta$")
     plt.show(block=False)
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(7, 4))
     plt.ylim(0,1)
     plt.xlim(0,MAX)
     ys = np.linspace(0.001,1,256)

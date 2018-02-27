@@ -9,6 +9,8 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigCanvas
 from matplotlib.figure import Figure
 
 from math import log
+from math import sqrt
+import numpy as np
 from scipy.stats import norm
 
 from algorithms import *

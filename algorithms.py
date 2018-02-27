@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from efprob.dc import *
 from math import copysign
 from math import exp
 from math import floor
@@ -54,7 +53,7 @@ def exponential(database, utility, epsilon, sensitivity=1, monotonic=True):
     def distribution(x):
         return weight(x) / normalization
 
-    return State.fromfun(distribution, dom=list(database))
+    return disribution
 
 
 class Distribution(object):
@@ -63,14 +62,10 @@ class Distribution(object):
         self.loc = loc
 
     def __call__(self, x):
-        return self.state(x)
+        return self.pdf(x)
 
     def larger(self, other):
         return 1 - self.differenceCDF(other)(0)
-
-    @property
-    def state(self):
-        return State.fromfun(self.pdf, R)
 
 
 class Laplace(Distribution):
