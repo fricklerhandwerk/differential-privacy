@@ -746,8 +746,13 @@ def on_spin_enter(event):
     spinbutton.SetFocus()
     spinctrl.SetFocus()
 
-if __name__ == '__main__':
+
+def main():
     app = wx.App()
     app.frame = Frame()
     app.frame.Show()
     app.MainLoop()
+
+
+if __name__ == '__main__':
+    main()
