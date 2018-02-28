@@ -89,7 +89,7 @@ class Laplace(Distribution):
             k = exp(-t/a)
             l = exp(-t/b)
             if a == b:
-                return (k + t/a*k) / (4*a)
+                return (k + (t/a)*k) / (4*a)
             else:
                 return ((k+l)/(a+b) + (k-l)/(a-b)) / 4
 
