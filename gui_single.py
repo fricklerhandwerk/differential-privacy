@@ -248,7 +248,7 @@ class Frame(wx.Frame):
             ax.axvline(x=self.top_quantile, color="blue")
 
         ax.set_xlim(self.divergence.lower.GetValue(), self.divergence.upper.GetValue())
-        self.divergence.figure.suptitle("Pointwise divergence of queries")
+        self.divergence.figure.suptitle("Privacy loss")
         self.divergence.draw()
 
     def get_distributions(self):
